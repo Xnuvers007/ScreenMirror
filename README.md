@@ -5,15 +5,15 @@ tested on Kali Linux , u can use this tools for linux Debian like ubuntu, Kali L
 
 for usage
 
-apt-get install git
+  > apt-get install git
 
-git clone https://github.com/Xnuvers007/ScreenMirror
+  > git clone https://github.com/Xnuvers007/ScreenMirror
 
-cd ScreenMirror
+  > cd ScreenMirror
 
-chmod +x info.sh
+  > chmod +x info.sh
 
-./info.sh
+  > ./info.sh
 
 # Information
 
