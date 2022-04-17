@@ -71,6 +71,7 @@ read -p "Have you installed VLC ? (y/n) : " VLC
         sudo -S adb devices
         gnome-terminal -- bash -c "./sndcpy.sh; exec bash"
         read -p "Your password Linux : " password
+        clear
         #echo "$password" | sudo -S chmod +x run.sh ; ./run.sh
         gnome-terminal -- bash -c "echo '$password' | sudo -S scrcpy -b 4M -m 800 ;exec bash"
     elif [ "$option" = "2" ]; then
@@ -86,6 +87,7 @@ read -p "Have you installed VLC ? (y/n) : " VLC
         read -p "Press [Enter] key to continue..."
         gnome-terminal -- bash -c "./sndcpy.sh; exec bash"
         read -p "Your Password Linux : " password
+        clear
         #echo "$password" | sudo -S chmod +x run.sh ; ./run.sh
         gnome-terminal -- bash -c "echo '$password' | sudo -S scrcpy --tcpip='$ip:5555' -b 4M -m 800 ;exec bash"
     else
