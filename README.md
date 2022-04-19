@@ -6,7 +6,7 @@ tested on Kali Linux , u can use this tools for linux Debian like ubuntu, Kali L
 Requirement :
 1. USB Cable
 2. LAN/Internet
-3. Turn on ADB Debugging
+3. Turn on USB Debugging (settings > developer option > USB Debugging)
 
 for usage
 
