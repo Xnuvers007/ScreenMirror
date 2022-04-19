@@ -3,6 +3,11 @@ this is repository for screen mirror from android to laptop
 
 tested on Kali Linux , u can use this tools for linux Debian like ubuntu, Kali Linux, kubuntu, Lubuntu, etc.
 
+Requirement :
+1. USB Cable
+2. LAN/Internet
+3. Turn on ADB Debugging
+
 for usage
 
   > apt-get install git
