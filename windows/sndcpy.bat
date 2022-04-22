@@ -3,7 +3,7 @@
 
 setlocal EnableDelayedExpansion
 
-Title Windows Command Prompt for Newbie
+Title Screen Mirroring by Xnuvers007
  
 PUSHD %~DP0 & cd /d "%~dp0"
 %1 %2
@@ -16,6 +16,7 @@ echo 2. Download scrcpy
 echo 3. Download sndcpy
 echo 4. exit
 echo 5. Start sndcpy (USB Cable)
+echo 6. Start sndcpy (LAN Connection)
 
 echo enter your Choice : 
 set /p answer=
@@ -25,6 +26,7 @@ if '%answer%'=='2' goto scrcpy
 if '%answer%'=='3' goto sndcpy
 if '%answer%'=='4' goto ex
 if '%answer%'=='5' goto USBsndcpy
+if '%answer%'=='6' goto LANsndcpy
 
 :vlc
 echo "Downloading VLC"
@@ -57,6 +59,18 @@ exit
 cd "C:\sndcpy-with-adb-windows-v1.1"
 adb.exe kill-server
 adb.exe start-server
+sndcpy.bat
+echo
+
+:LANsndcpy
+cd "C:\sndcpy-with-adb-windows-v1.1"
+echo Enter your ip :
+set /p ip=
+if not '%ip%'=='' set ip=%ip%
+adb.exe kill-server
+adb.exe start-server
+adb.exe tcpip 5555
+adb.exe connect %ip%:5555
 sndcpy.bat
 echo
 
