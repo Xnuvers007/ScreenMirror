@@ -22,7 +22,7 @@ for usage
 
 # Information
 
-windows will be soon
+if u find a bug, just open [Issues](https://github.com/Xnuvers007/ScreenMirror/issues)
 
 i hope u enjoy it, and i hope this is usefull, thank you
 
