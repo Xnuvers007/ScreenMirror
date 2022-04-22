@@ -26,4 +26,9 @@ windows will be soon
 
 i hope u enjoy it, and i hope this is usefull, thank you
 
-![images](https://github.com/Xnuvers007/ScreenMirror/blob/master/images/Screenshot_2022-04-17_21-11-45.png "Thumbnail")
+# Linux
+
+![images](https://github.com/Xnuvers007/ScreenMirror/blob/master/images/Screenshot_2022-04-17_21-11-45.png "Kali Linux")
+
+# Windows 10
+![image](https://user-images.githubusercontent.com/62522733/164701064-9496be60-9a05-4343-a951-0df4da51bdb7.png "Windows 10")
