@@ -10,6 +10,7 @@ PUSHD %~DP0 & cd /d "%~dp0"
 mshta vbscript:createobject("shell.application").shellexecute("%~s0","goto :runas","","runas",1)(window.close)&goto :eof
 :runas
 
+:startt
 echo "have u installed vlc, scrcpy, and sndcpy ? [1,2,3,4]"
 echo 1. Download vlc
 echo 2. Download scrcpy
@@ -35,7 +36,7 @@ echo "Downloading VLC done"
 echo "Installing VLC"
 powershell -Command "Start-Process -FilePath 'vlc-3.0.17.4-win64.exe' -ArgumentList '/S' -Verb runAs"
 echo "Installing VLC done"
-exit
+goto startt
 
 :scrcpy
 echo "Downloading Scrcpy"
@@ -44,6 +45,7 @@ echo "Downloading Scrcpy done"
 echo "Extract Scrcpy"
 powershell -Command "Expand-Archive -Path 'scrcpy-win64-v1.23.zip' -DestinationPath 'C:\scrcpy-win64-v1.23'"
 echo "Extract Scrcpy done"
+goto startt
 
 :sndcpy
 echo "Downloading Sndcpy"
@@ -52,8 +54,7 @@ echo "Downloading Sndcpy done"
 echo "Extract Sndcpy"
 powershell -Command "Expand-Archive -Path 'sndcpy-with-adb-windows-v1.1.zip' -DestinationPath 'C:\sndcpy-with-adb-windows-v1.1'"
 echo "Extract Sndcpy done"
-pause
-exit
+goto startt
 
 :USBsndcpy
 cd "C:\sndcpy-with-adb-windows-v1.1"
