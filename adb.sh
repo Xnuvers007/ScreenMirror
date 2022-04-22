@@ -3,8 +3,6 @@
 
 # Coded By Xnuvers007 don't modified without Credits
 
-# For Windows Version , will be soon
-
 vlc_down(){
 read -p "Have you installed VLC ? (y/n) : " VLC
     if [ "$VLC" = "y" ] || [ "$VLC" = "Y"]; then
