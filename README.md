@@ -42,3 +42,17 @@ i hope u enjoy it, and i hope this is usefull, thank you
 
 # Windows 10
 ![image](https://user-images.githubusercontent.com/62522733/164701064-9496be60-9a05-4343-a951-0df4da51bdb7.png "Windows 10")
+
+# How To Activate USB Debugging
+
+# English
+
+https://developer.android.com/studio/debug/dev-options
+
+https://www.youtube.com/watch?v=Ucs34BkfPB0
+
+# Indonesia
+
+https://webdev-id.com/berita/usb-debugging/
+
+https://www.youtube.com/watch?v=B0NVG5UkRAw
