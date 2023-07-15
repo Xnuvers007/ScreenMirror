@@ -2,11 +2,11 @@
 
 Linux English ver = [info.sh](https://github.com/Xnuvers007/ScreenMirror/blob/master/info.sh)
 
+Linux Indonesian Ver = [Linux-ID/info.sh](https://github.com/Xnuvers007/ScreenMirror/tree/master/Linux-ID)
+
 Windows English ver = [windows/sndcpy.bat & scrcpy.bat](https://github.com/Xnuvers007/ScreenMirror/tree/master/windows)
 
 Windows Indonesian Ver = [Windows-ID/sndcpy.bat & scrcpy.bat](https://github.com/Xnuvers007/ScreenMirror/tree/master/Windows-ID)
-
-Linux Indonesian Ver = [Linux-ID/info.sh](https://github.com/Xnuvers007/ScreenMirror/tree/master/Linux-ID)
 
 # ScreenMirror
 this is repository for screen mirror from android to laptop
@@ -18,7 +18,13 @@ Requirement :
 2. LAN/Internet
 3. Turn on USB Debugging (settings > developer option > USB Debugging)
 
-for usage
+# Note
+**NOTE : If you use windows, use with powershell administrator, if you use linux, use with terminal and do super root**
+
+=======================================================
+
+# for usage
+
 
   > apt-get install git
 
