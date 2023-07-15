@@ -13,9 +13,9 @@ Lihat video ini jika kamu ingin melihat tutorial menyalakannya dengan scrcpyLAN
 
 ## USB
 
-Kamu bisa melihat tutorial dari gif/video ini
+Kamu bisa melihat tutorial dari video youtube ini (kamu perlu untuk menekan gambarnya)
 
-![USB](./USB/scrcpyUSB.gif)
+[![Watch the video](https://i.ytimg.com/vi/LZb_svyVs3k/hqdefault.jpg)](https://www.youtube.com/watch?v=LZb_svyVs3k)
 
 <br />
 <br />
@@ -37,6 +37,6 @@ see the video if you want to know tutorial
 
 ## USB
 
-You can see the tutorial from this gif/video
+You can see the tutorial from this video youtube (you need to click the image)
 
-![USB](./USB/scrcpyUSB.gif)
+[![Watch the video](https://i.ytimg.com/vi/LZb_svyVs3k/hqdefault.jpg)](https://www.youtube.com/watch?v=LZb_svyVs3k)
