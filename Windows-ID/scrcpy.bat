@@ -5,8 +5,10 @@ Title Screen Mirroring by Xnuvers007
 REM Periksa apakah 32-bit atau 64-bit
 if "%PROCESSOR_ARCHITECTURE%"=="x86" (
     set "scrcpyPath=C:\scrcpy-win32-v2.1.1\scrcpy-win32-v2.1.1"
+    echo Anda menggunakan laptop 32-bit.
 ) else (
     set "scrcpyPath=C:\scrcpy-win64-v2.1.1\scrcpy-win64-v2.1.1"
+    echo Anda menggunakan laptop 64-bit.
 )
 
 REM Tambahkan direktori scrcpy ke PATH
