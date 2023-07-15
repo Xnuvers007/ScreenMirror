@@ -1,3 +1,11 @@
+# README
+
+Readme Windows = [https://github.com/Xnuvers007/ScreenMirror/blob/master/windows/README.md](https://github.com/Xnuvers007/ScreenMirror/blob/master/windows/README.md)
+
+Readme Linux = [https://github.com/Xnuvers007/ScreenMirror/blob/master/README.md](https://github.com/Xnuvers007/ScreenMirror/blob/master/README.md)
+
+[DOWNLOAD HERE](https://github.com/Xnuvers007/ScreenMirror/archive/refs/heads/master.zip)
+
 # Code
 
 Linux English ver = [info.sh](https://github.com/Xnuvers007/ScreenMirror/blob/master/info.sh)
