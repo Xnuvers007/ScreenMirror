@@ -5,10 +5,10 @@ Title Screen Mirroring by Xnuvers007
 REM Check if 32-bit or 64-bit
 if "%PROCESSOR_ARCHITECTURE%"=="x86" (
     set "scrcpyPath=C:\scrcpy-win32-v2.1.1\scrcpy-win32-v2.1.1"
-    echo Anda menggunakan laptop 32-bit.
+    echo you are using 32 bit
 ) else (
     set "scrcpyPath=C:\scrcpy-win64-v2.1.1\scrcpy-win64-v2.1.1"
-    echo Anda menggunakan laptop 64-bit.
+    echo you are using 64 bit
 )
 
 REM Add scrcpy directory to PATH
@@ -48,6 +48,7 @@ set /p maxFPS=
 if not '%maxFPS%'=='' set maxFPS=%maxFPS%
 adb.exe kill-server
 adb.exe start-server
+adb.exe devices -l
 scrcpy.exe -b 40M --max-fps %maxFPS%
 goto :end
 
@@ -59,6 +60,7 @@ set /p maxFPS=
 if not '%maxFPS%'=='' set maxFPS=%maxFPS%
 adb.exe kill-server
 adb.exe start-server
+adb.exe devices -l
 scrcpy.exe -b 40M --max-fps %maxFPS%
 goto :end
 
@@ -82,6 +84,7 @@ set /p ip=
 if not '%ip%'=='' set ip=%ip%
 adb.exe kill-server
 adb.exe start-server
+adb.exe devices -l
 adb.exe tcpip 5555
 adb.exe connect %ip%:5555
 echo Enter the maximum FPS (frames per second) without "fps". Example: 30 (30 fps)
@@ -98,6 +101,7 @@ set /p ip=
 if not '%ip%'=='' set ip=%ip%
 adb.exe kill-server
 adb.exe start-server
+adb.exe devices -l
 adb.exe tcpip 5555
 adb.exe connect %ip%:5555
 echo Enter the maximum FPS (frames per second) without "fps". Example: 30 (30 fps)
