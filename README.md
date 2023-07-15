@@ -4,7 +4,7 @@ Readme Windows = [https://github.com/Xnuvers007/ScreenMirror/blob/master/windows
 
 Readme Linux = [https://github.com/Xnuvers007/ScreenMirror/blob/master/README.md](https://github.com/Xnuvers007/ScreenMirror/blob/master/README.md)
 
-[DOWNLOAD HERE](https://github.com/Xnuvers007/ScreenMirror/archive/refs/heads/master.zip)
+You can [DOWNLOAD HERE](https://github.com/Xnuvers007/ScreenMirror/archive/refs/heads/master.zip)
 
 # Code
 
