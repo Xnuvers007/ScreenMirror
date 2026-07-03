@@ -1,41 +1,75 @@
 #!/bin/bash
-#!/bin/sh
-# Coded By Xnuvers007 don't modified without Credits
+# ============================================================
+#  ScreenMirror - Info & Prerequisite Check (Linux English)
+#  Coded by Xnuvers007
+# ============================================================
 
-# For Windows Version , will be soon
+Red='\033[1;31m'
+Green='\033[1;32m'
+Yellow='\033[1;33m'
+Blue='\033[1;34m'
+Cyan='\033[1;36m'
+RESET='\033[0m'
 
-Red=$'\e[1;31m'
-Green=$'\e[1;32m'
-Blue=$'\e[1;34m'
-t_reset='\e[0m'
-
-
-echo "$Green"
-echo "========= Hostname ================"
-hostnamectl
-echo
-echo "========= Your IP  ================"
-echo "IP Wlan0 : " ; ip addr show wlan0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Wlan1 : " ; ip addr show wlan1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Eth0 : " ; ip addr  show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Eth1 : " ; ip addr  show eth1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Usb0 : " ; ip addr  show usb0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Usb1 : " ; ip addr  show usb1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo
-echo "======== Linux Standard Base ======"
-lsb_release -a
-echo
-
-read -p "Press [Enter] key to continue..."
 clear
-echo "$Green"
-echo "You Need Android at least API 21 or Android 5.0 , Recommended is Android 10"
-echo "Make Sure you enabled USB Debugging on your Android device, settings > Developer options > USB Debugging"
-echo "if you already connect ur cable usb to laptop, then continue"
-read -p "Press [Enter] key to continue..."
-echo "$t_reset"
-clear
+echo -e "${Cyan}"
+echo "  ╔══════════════════════════════════════════════════════╗"
+echo "  ║       📱  S C R E E N   M I R R O R  📺            ║"
+echo "  ║        System Information  |  English               ║"
+echo "  ╚══════════════════════════════════════════════════════╝"
+echo -e "${RESET}"
 
-read -p "Your password Linux : " password
-clear
-echo "$password" | sudo -S chmod +x run.sh ; ./run.sh
+echo -e "${Green}  ─── Hostname Information ───────────────────────────${RESET}"
+hostnamectl 2>/dev/null || hostname
+
+echo ""
+echo -e "${Green}  ─── IP Addresses ────────────────────────────────────${RESET}"
+for iface in wlan0 wlan1 eth0 eth1 usb0 usb1; do
+    ip_addr=$(ip addr show "$iface" 2>/dev/null | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+    if [ -n "$ip_addr" ]; then
+        echo -e "${Yellow}  IP $iface : ${Green}$ip_addr${RESET}"
+    fi
+done
+
+echo ""
+echo -e "${Green}  ─── All Active Interfaces ───────────────────────────${RESET}"
+ip -br addr show 2>/dev/null | grep -v "^lo" | while read -r line; do
+    echo "  $line"
+done
+
+echo ""
+echo -e "${Green}  ─── Linux OS Info ───────────────────────────────────${RESET}"
+lsb_release -a 2>/dev/null || cat /etc/os-release 2>/dev/null | head -5
+
+echo ""
+echo -e "${Green}  ─── ADB Version ─────────────────────────────────────${RESET}"
+if command -v adb &>/dev/null; then
+    adb version 2>/dev/null | head -2
+    echo -e "${Green}  ✔ ADB is available${RESET}"
+else
+    echo -e "${Red}  ✘ ADB NOT found - install with: sudo apt-get install adb${RESET}"
+fi
+
+echo ""
+echo -e "${Green}  ─── scrcpy Version ──────────────────────────────────${RESET}"
+if command -v scrcpy &>/dev/null; then
+    scrcpy --version 2>/dev/null | head -1
+    echo -e "${Green}  ✔ scrcpy is available${RESET}"
+else
+    echo -e "${Red}  ✘ scrcpy NOT found - install with: sudo apt-get install scrcpy${RESET}"
+fi
+
+echo ""
+echo -e "${Blue}  ─── Requirements ────────────────────────────────────${RESET}"
+echo -e "${Yellow}  • Android minimum API 21 (Android 5.0), recommended Android 10+
+  • USB Debugging must be enabled on your phone
+  • USB cable connected to laptop (for USB mode)
+  • Phone and laptop on same WiFi (for WiFi mode)"
+echo -e "${RESET}"
+
+echo ""
+read -rp "$(echo -e "${Yellow}  Press [ENTER] to continue to the main script...${RESET}")"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+chmod +x "$SCRIPT_DIR/screenmirror.sh" 2>/dev/null
+"$SCRIPT_DIR/screenmirror.sh"

@@ -1,41 +1,77 @@
 #!/bin/bash
-#!/bin/sh
-# Coded By Xnuvers007 don't modified without Credits
+# ============================================================
+#  ScreenMirror - Linux Indonesia - Info & Prerequisite Check
+#  Dibuat oleh Xnuvers007
+# ============================================================
 
-# For Windows Version , will be soon
+Red='\033[1;31m'
+Green='\033[1;32m'
+Yellow='\033[1;33m'
+Blue='\033[1;34m'
+Cyan='\033[1;36m'
+RESET='\033[0m'
 
-Red=$'\e[1;31m'
-Green=$'\e[1;32m'
-Blue=$'\e[1;34m'
-t_reset='\e[0m'
-
-
-echo "$Green"
-echo "========= Hostname ================"
-hostnamectl
-echo
-echo "========= IP Kamu  ================"
-echo "IP Wlan0 : " ; ip addr show wlan0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Wlan1 : " ; ip addr show wlan1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Eth0 : " ; ip addr  show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Eth1 : " ; ip addr  show eth1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Usb0 : " ; ip addr  show usb0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo "IP Usb1 : " ; ip addr  show usb1 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1
-echo
-echo "======== Linux Standard Base ======"
-lsb_release -a
-echo
-
-read -p "Silahkan Enter untuk continue..."
 clear
-echo "$Green"
-echo "Anda Membutuhkan Android setidaknya API 21 atau Android 5.0, Direkomendasikan adalah Android 10"
-echo "Pastikan Anda mengaktifkan USB Debugging di perangkat Android Anda, pengaturan > Opsi pengembang > USB Debugging"
-echo "Jika sudah terkoneksi kabel usb nya ke laptop, lalu enter untuk continue"
-read -p "ketik enter untuk continue..."
-echo "$t_reset"
-clear
+echo -e "${Cyan}"
+echo "  ╔══════════════════════════════════════════════════════╗"
+echo "  ║       📱  S C R E E N   M I R R O R  📺            ║"
+echo "  ║        Informasi Sistem  |  Bahasa Indonesia        ║"
+echo "  ╚══════════════════════════════════════════════════════╝"
+echo -e "${RESET}"
 
-read -p "Password Linux Kamu : " password
-clear
-echo "$password" | sudo -S chmod +x run.sh ; ./run.sh
+echo -e "${Green}  ─── Informasi Hostname ─────────────────────────────${RESET}"
+hostnamectl 2>/dev/null || hostname
+
+echo ""
+echo -e "${Green}  ─── Alamat IP ───────────────────────────────────────${RESET}"
+
+for iface in wlan0 wlan1 eth0 eth1 usb0 usb1; do
+    ip_addr=$(ip addr show "$iface" 2>/dev/null | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+    if [ -n "$ip_addr" ]; then
+        echo -e "${Yellow}  IP $iface : ${Green}$ip_addr${RESET}"
+    fi
+done
+
+# Tampilkan semua interface aktif
+echo ""
+echo -e "${Green}  ─── Semua Interface Aktif ───────────────────────────${RESET}"
+ip -br addr show 2>/dev/null | grep -v "^lo" | while read -r line; do
+    echo "  $line"
+done
+
+echo ""
+echo -e "${Green}  ─── Informasi OS Linux ──────────────────────────────${RESET}"
+lsb_release -a 2>/dev/null || cat /etc/os-release 2>/dev/null | head -5
+
+echo ""
+echo -e "${Green}  ─── Versi ADB ───────────────────────────────────────${RESET}"
+if command -v adb &>/dev/null; then
+    adb version 2>/dev/null | head -2
+    echo -e "${Green}  ✔ ADB tersedia${RESET}"
+else
+    echo -e "${Red}  ✘ ADB TIDAK tersedia - install dengan: sudo apt-get install adb${RESET}"
+fi
+
+echo ""
+echo -e "${Green}  ─── Versi scrcpy ────────────────────────────────────${RESET}"
+if command -v scrcpy &>/dev/null; then
+    scrcpy --version 2>/dev/null | head -1
+    echo -e "${Green}  ✔ scrcpy tersedia${RESET}"
+else
+    echo -e "${Red}  ✘ scrcpy TIDAK tersedia - install dengan: sudo apt-get install scrcpy${RESET}"
+fi
+
+echo ""
+echo -e "${Blue}  ─── Persyaratan ─────────────────────────────────────${RESET}"
+echo -e "${Yellow}  • Android minimal API 21 (Android 5.0), disarankan Android 10+"
+echo "  • USB Debugging harus diaktifkan di HP"
+echo "  • Hubungkan kabel USB ke laptop (untuk koneksi USB)"
+echo "  • HP dan laptop di WiFi yang sama (untuk koneksi WiFi)"
+echo -e "${RESET}"
+
+echo ""
+read -rp "$(echo -e "${Yellow}  Tekan [ENTER] untuk melanjutkan ke script utama...${RESET}")"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+chmod +x "$SCRIPT_DIR/screenmirror.sh" 2>/dev/null
+"$SCRIPT_DIR/screenmirror.sh"

@@ -1,107 +1,112 @@
 @echo off
-//Menjalankan Otomatis Sebagai Administrator
-
 setlocal EnableDelayedExpansion
+chcp 65001 >nul 2>&1
 
-Title Screen Mirroring oleh Xnuvers007 (Sebagai Administrator)
- 
-PUSHD %~DP0 & cd /d "%~dp0"
-%1 %2
-mshta vbscript:createobject("shell.application").shellexecute("%~s0","goto :runas","","runas",1)(window.close)&goto :eof
-:runas
+:: Define ESC character for colors
+for /F "delims=#" %%E in ('"prompt #$E# & for %%E in (1) do rem"') do set "ESC=%%E"
 
-:startt
-echo "Apakah Anda sudah menginstal VLC, scrcpy, dan sndcpy? [1,2,3,4]"
-echo 1. Unduh VLC (64-bit)
-echo 2. Unduh VLC (32-bit)
-echo 3. Unduh scrcpy (64-bit)
-echo 4. Unduh scrcpy (32-bit)
-echo 5. Unduh sndcpy
-echo 6. Keluar
-echo 7. Mulai sndcpy (Kabel USB)
-echo 8. Mulai sndcpy (Koneksi LAN)
-echo 9. Mulai scrcpy
+:: ============================================================
+::  ScreenMirror - sndcpy (Audio Mirror - Windows Indonesia)
+::  Dibuat oleh Xnuvers007
+:: ============================================================
 
-echo Masukkan pilihan Anda: 
-set /p answer=
-if not '%answer%'=='' set answer=%answer%
-if '%answer%'=='1' goto vlc64
-if '%answer%'=='2' goto vlc32
-if '%answer%'=='3' goto scrcpy64
-if '%answer%'=='4' goto scrcpy32
-if '%answer%'=='5' goto sndcpy
-if '%answer%'=='6' goto ex
-if '%answer%'=='7' goto USBsndcpy
-if '%answer%'=='8' goto LANsndcpy
-if '%answer%'=='9' goto scrcpy
+title ScreenMirror Audio - sndcpy by Xnuvers007
 
-:scrcpy
-./scrcpy.bat
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    powershell -Command "Start-Process '%~f0' -Verb runAs"
+    exit /b
+)
 
-:vlc64
-echo "Mengunduh VLC (64-bit)"
-powershell -Command "Invoke-WebRequest -Uri 'https://mirror.mangohost.net/videolan/vlc/3.0.18/win64/vlc-3.0.18-win64.exe' -OutFile 'vlc-3.0.18-win64.exe'"
-echo "Unduhan VLC (64-bit) selesai"
-echo "Menginstal VLC (64-bit)"
-powershell -Command "Start-Process -FilePath 'vlc-3.0.18-win64.exe' -ArgumentList '/S' -Verb runAs"
-echo "Instalasi VLC (64-bit) selesai"
-goto startt
+cls
+echo.
+echo   %ESC%[32m  ======================================%ESC%[0m
+echo   %ESC%[32m    Mirroring Audio Android - sndcpy    %ESC%[0m
+echo   %ESC%[32m    Suara HP ke Speaker Laptop          %ESC%[0m
+echo   %ESC%[32m  ======================================%ESC%[0m
+echo.
 
-:vlc32
-echo "Mengunduh VLC (32-bit)"
-powershell -Command "Invoke-WebRequest -Uri 'https://mirror.mangohost.net/videolan/vlc/3.0.18/win32/vlc-3.0.18-win32.exe' -OutFile 'vlc-3.0.18-win32.exe'"
-echo "Unduhan VLC (32-bit) selesai"
-echo "Menginstal VLC (32-bit)"
-powershell -Command "Start-Process -FilePath 'vlc-3.0.18-win32.exe' -ArgumentList '/S' -Verb runAs"
-echo "Instalasi VLC (32-bit) selesai"
-goto startt
+set "SNDCPY_DIR=C:\sndcpy"
+set "ADB_PATH="
 
-:scrcpy64
-echo "Mengunduh scrcpy (64-bit)"
-powershell -Command "curl https://github.com/Genymobile/scrcpy/releases/download/v2.1.1/scrcpy-win64-v2.1.1.zip -o scrcpy-win64-v2.1.1.zip"
-echo "Unduhan scrcpy (64-bit) selesai"
-echo "Mengekstrak scrcpy (64-bit)"
-powershell -Command "Expand-Archive -Path 'scrcpy-win64-v2.1.1.zip' -DestinationPath 'C:\scrcpy-win64-v2.1.1'"
-echo "Ekstraksi scrcpy (64-bit) selesai"
-goto startt
+where adb >nul 2>&1
+if %errorLevel% equ 0 (
+    for /f "tokens=*" %%i in ('where adb') do set "ADB_PATH=%%i"
+) else (
+    set "ADB_PATH=%SNDCPY_DIR%\adb.exe"
+)
 
-:scrcpy32
-echo "Mengunduh scrcpy (32-bit)"
-powershell -Command "curl https://github.com/Genymobile/scrcpy/releases/download/v2.1.1/scrcpy-win32-v2.1.1.zip -o scrcpy-win32-v2.1.1.zip"
-echo "Unduhan scrcpy (32-bit) selesai"
-echo "Mengekstrak scrcpy (32-bit)"
-powershell -Command "Expand-Archive -Path 'scrcpy-win32-v2.1.1.zip' -DestinationPath 'C:\scrcpy-win32-v2.1.1'"
-echo "Ekstraksi scrcpy (32-bit) selesai"
-goto startt
+:MENU_SNDCPY
+echo   Pilih opsi:
+echo.
+echo     1. Download ^& Install VLC (64-bit)
+echo     2. Download ^& Install VLC (32-bit)
+echo     3. Download sndcpy (audio mirroring)
+echo     4. Mulai audio mirroring (USB)
+echo     5. Mulai audio mirroring (WiFi/LAN)
+echo     6. Kembali
+echo.
+set /p "schoice=  Pilihan [1-6]: "
 
-:sndcpy
-echo "Mengunduh sndcpy"
-powershell -Command "curl https://github.com/rom1v/sndcpy/releases/download/v1.1/sndcpy-with-adb-windows-v1.1.zip -o sndcpy-with-adb-windows-v1.1.zip"
-echo "Unduhan sndcpy selesai"
-echo "Mengekstrak sndcpy"
-powershell -Command "Expand-Archive -Path 'sndcpy-with-adb-windows-v1.1.zip' -DestinationPath 'C:\sndcpy-with-adb-windows-v1.1'"
-echo "Ekstraksi sndcpy selesai"
-goto startt
+if "!schoice!"=="1" goto :VLC64
+if "!schoice!"=="2" goto :VLC32
+if "!schoice!"=="3" goto :DL_SNDCPY
+if "!schoice!"=="4" goto :USB_SNDCPY
+if "!schoice!"=="5" goto :LAN_SNDCPY
+if "!schoice!"=="6" exit /b 0
+goto :MENU_SNDCPY
 
-:USBsndcpy
-cd "C:\sndcpy-with-adb-windows-v1.1"
-adb.exe kill-server
-adb.exe start-server
+:VLC64
+echo   %ESC%[37m  Mengunduh VLC 64-bit...%ESC%[0m
+powershell -Command "Invoke-WebRequest -Uri 'https://mirror.mangohost.net/videolan/vlc/3.0.18/win64/vlc-3.0.18-win64.exe' -OutFile '%TEMP%\vlc-win64.exe' -UseBasicParsing"
+powershell -Command "Start-Process -FilePath '%TEMP%\vlc-win64.exe' -ArgumentList '/S' -Verb runAs -Wait"
+echo   %ESC%[32m  VLC 64-bit berhasil diinstall!%ESC%[0m
+pause
+goto :MENU_SNDCPY
+
+:VLC32
+echo   %ESC%[37m  Mengunduh VLC 32-bit...%ESC%[0m
+powershell -Command "Invoke-WebRequest -Uri 'https://mirror.mangohost.net/videolan/vlc/3.0.18/win32/vlc-3.0.18-win32.exe' -OutFile '%TEMP%\vlc-win32.exe' -UseBasicParsing"
+powershell -Command "Start-Process -FilePath '%TEMP%\vlc-win32.exe' -ArgumentList '/S' -Verb runAs -Wait"
+echo   %ESC%[32m  VLC 32-bit berhasil diinstall!%ESC%[0m
+pause
+goto :MENU_SNDCPY
+
+:DL_SNDCPY
+echo   %ESC%[37m  Mengunduh sndcpy...%ESC%[0m
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/rom1v/sndcpy/releases/download/v1.1/sndcpy-with-adb-windows-v1.1.zip' -OutFile '%TEMP%\sndcpy.zip' -UseBasicParsing"
+echo   %ESC%[37m  Mengekstrak sndcpy...%ESC%[0m
+powershell -Command "Expand-Archive -Path '%TEMP%\sndcpy.zip' -DestinationPath 'C:\sndcpy' -Force"
+echo   %ESC%[32m  sndcpy berhasil diinstall di C:\sndcpy!%ESC%[0m
+pause
+goto :MENU_SNDCPY
+
+:USB_SNDCPY
+if not exist "%SNDCPY_DIR%" (
+    echo   %ESC%[31m  sndcpy belum diinstall! Pilih opsi 3 terlebih dahulu.%ESC%[0m
+    pause
+    goto :MENU_SNDCPY
+)
+echo   %ESC%[37m  Memulai audio mirroring via USB...%ESC%[0m
+"%ADB_PATH%" kill-server >nul 2>&1
+"%ADB_PATH%" start-server >nul 2>&1
+cd /d "%SNDCPY_DIR%"
 sndcpy.bat
-echo
+goto :MENU_SNDCPY
 
-:LANsndcpy
-cd "C:\sndcpy-with-adb-windows-v1.1"
-echo Masukkan alamat IP Anda:
-set /p ip=
-if not '%ip%'=='' set ip=%ip%
-adb.exe kill-server
-adb.exe start-server
-adb.exe tcpip 5555
-adb.exe connect %ip%:5555
+:LAN_SNDCPY
+if not exist "%SNDCPY_DIR%" (
+    echo   %ESC%[31m  sndcpy belum diinstall! Pilih opsi 3 terlebih dahulu.%ESC%[0m
+    pause
+    goto :MENU_SNDCPY
+)
+echo.
+set /p "snd_ip=  Masukkan IP address HP: "
+if "!snd_ip!"=="" ( echo   %ESC%[31m  IP tidak boleh kosong!%ESC%[0m; pause; goto :MENU_SNDCPY )
+"%ADB_PATH%" kill-server >nul 2>&1
+"%ADB_PATH%" start-server >nul 2>&1
+"%ADB_PATH%" tcpip 5555
+"%ADB_PATH%" connect "!snd_ip!:5555"
+cd /d "%SNDCPY_DIR%"
 sndcpy.bat
-echo
-
-:ex
-echo "Keluar"
-exit
+goto :MENU_SNDCPY

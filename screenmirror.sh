@@ -1,0 +1,732 @@
+#!/bin/bash
+# ============================================================
+#  ScreenMirror - Main Script (Linux - English)
+#  Coded by Xnuvers007
+#  Don't modify without credit/original source
+# ============================================================
+# LICENSE: MIT | GitHub: https://github.com/Xnuvers007/ScreenMirror
+# ============================================================
+
+# --- Terminal Colors ---
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
+PURPLE='\033[1;35m'
+RESET='\033[0m'
+BOLD='\033[1m'
+
+# --- Configuration ---
+CONFIG_FILE="$HOME/.screenmirror.conf"
+SCRCPY_VERSION="2.1.1"
+
+# ============================================================
+# UTILITY FUNCTIONS
+# ============================================================
+
+banner() {
+    clear
+    echo -e "${CYAN}"
+    echo "  ╔══════════════════════════════════════════════════════╗"
+    echo "  ║       📱  S C R E E N   M I R R O R  📺            ║"
+    echo "  ║          Android → Laptop  |  by Xnuvers007         ║"
+    echo "  ║           Linux Edition  |  English                 ║"
+    echo "  ╚══════════════════════════════════════════════════════╝"
+    echo -e "${RESET}"
+}
+
+separator() { echo -e "${BLUE}  ──────────────────────────────────────────────────────${RESET}"; }
+info()    { echo -e "${GREEN}  [✔] $1${RESET}"; }
+warn()    { echo -e "${YELLOW}  [⚠] $1${RESET}"; }
+error()   { echo -e "${RED}  [✘] $1${RESET}"; }
+title()   { echo -e "\n${PURPLE}${BOLD}  ═══ $1 ═══${RESET}\n"; }
+step()    { echo -e "${CYAN}  ▶ $1${RESET}"; }
+note()    { echo -e "${WHITE}  ℹ  $1${RESET}"; }
+
+press_enter() {
+    echo ""
+    read -rp "$(echo -e "${YELLOW}  Press [ENTER] to continue...${RESET}")"
+}
+
+# ============================================================
+# SAVE & LOAD CONFIGURATION
+# ============================================================
+
+save_config() {
+    cat > "$CONFIG_FILE" <<EOF
+# ScreenMirror Configuration - Auto-saved
+# Last updated: $(date)
+LAST_CONNECTION="$LAST_CONNECTION"
+LAST_IP="$LAST_IP"
+LAST_PORT="$LAST_PORT"
+LAST_FPS="$LAST_FPS"
+LAST_BITRATE="$LAST_BITRATE"
+LAST_RESOLUTION="$LAST_RESOLUTION"
+LAST_CODEC="$LAST_CODEC"
+STAY_AWAKE="$STAY_AWAKE"
+NO_CONTROL="$NO_CONTROL"
+TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+EOF
+    info "Configuration saved to: $CONFIG_FILE"
+}
+
+load_config() {
+    # Defaults
+    LAST_CONNECTION="1"
+    LAST_IP=""
+    LAST_PORT="5555"
+    LAST_FPS="60"
+    LAST_BITRATE="8M"
+    LAST_RESOLUTION="1080"
+    LAST_CODEC="h264"
+    STAY_AWAKE="y"
+    NO_CONTROL="n"
+    TURN_SCREEN_OFF="n"
+
+    if [ -f "$CONFIG_FILE" ]; then
+        # shellcheck source=/dev/null
+        source "$CONFIG_FILE"
+        info "Last configuration loaded from: $CONFIG_FILE"
+        separator
+        note "Last IP          : ${LAST_IP:-Not set}"
+        note "Last Port        : $LAST_PORT"
+        note "Last FPS         : $LAST_FPS"
+        note "Last Bitrate     : $LAST_BITRATE"
+        note "Last Connection  : $([ "$LAST_CONNECTION" = "1" ] && echo "USB" || ([ "$LAST_CONNECTION" = "2" ] && echo "WiFi/TCP" || echo "Wireless Debug"))"
+        separator
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Use last saved configuration? [y/n] (default: y): ${RESET}")" USE_LAST
+        USE_LAST="${USE_LAST:-y}"
+        if [[ "$USE_LAST" =~ ^[Yy]$ ]]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# ============================================================
+# CHECK DEPENDENCIES & COMPATIBILITY
+# ============================================================
+
+check_dependencies() {
+    title "CHECKING DEPENDENCIES"
+    local missing=0
+
+    for cmd in adb scrcpy; do
+        if command -v "$cmd" &>/dev/null; then
+            info "$cmd found: $(which $cmd)"
+        else
+            error "$cmd NOT found!"
+            missing=$((missing + 1))
+        fi
+    done
+
+    if [ $missing -gt 0 ]; then
+        warn "Missing dependencies. Try installing with:"
+        note "sudo apt-get install -y adb scrcpy"
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Install automatically now? [y/n]: ${RESET}")" INSTALL_NOW
+        if [[ "$INSTALL_NOW" =~ ^[Yy]$ ]]; then
+            step "Installing dependencies..."
+            sudo apt-get update -q
+            sudo apt-get install -y adb scrcpy
+            info "Installation complete!"
+        else
+            error "Please install dependencies first, then re-run this script."
+            exit 1
+        fi
+    fi
+}
+
+check_device() {
+    title "CHECKING ANDROID DEVICE"
+
+    step "Starting ADB server..."
+    adb kill-server &>/dev/null
+    adb start-server &>/dev/null
+
+    local devices
+    devices=$(adb devices | awk 'NR>1 && $2=="device" {print $1}')
+
+    if [ -z "$devices" ]; then
+        error "No Android device detected!"
+        separator
+        echo -e "${YELLOW}"
+        echo "  Possible causes:"
+        echo "  1. USB cable not connected (for USB mode)"
+        echo "  2. USB Debugging not enabled on your phone"
+        echo "  3. You need to tap 'Allow' on the 'Allow USB Debugging?' popup"
+        echo "  4. USB driver not installed"
+        echo -e "${RESET}"
+        press_enter
+        return 1
+    fi
+
+    info "Device detected:"
+    separator
+    local device_id
+    device_id=$(echo "$devices" | head -1)
+
+    local model serial sdk android_ver
+    model=$(adb -s "$device_id" shell getprop ro.product.model 2>/dev/null | tr -d '\r')
+    serial=$(adb -s "$device_id" shell getprop ro.serialno 2>/dev/null | tr -d '\r')
+    sdk=$(adb -s "$device_id" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
+    android_ver=$(adb -s "$device_id" shell getprop ro.build.version.release 2>/dev/null | tr -d '\r')
+
+    note "Model       : ${model:-Unknown}"
+    note "Serial      : ${serial:-Unknown}"
+    note "Android SDK : API $sdk (Android $android_ver)"
+    note "Device ID   : $device_id"
+
+    separator
+
+    if [ -n "$sdk" ] && [ "$sdk" -lt 21 ]; then
+        error "Your Android is too old (API $sdk / Android $android_ver)"
+        error "ScreenMirror requires at least Android 5.0 (API 21)"
+        exit 1
+    elif [ -n "$sdk" ] && [ "$sdk" -lt 28 ]; then
+        warn "Your Android (API $sdk) is supported but with limited features."
+        warn "Recommended: Android 9+ (API 28) for best performance."
+    else
+        info "Device is compatible! ✓"
+    fi
+
+    local usb_debug
+    usb_debug=$(adb -s "$device_id" shell settings get global development_settings_enabled 2>/dev/null | tr -d '\r')
+    if [ "$usb_debug" = "1" ]; then
+        info "USB Debugging: ENABLED ✓"
+    else
+        warn "Developer Options may need to be enabled. See tutorial."
+    fi
+
+    ACTIVE_DEVICE="$device_id"
+    ACTIVE_SDK="$sdk"
+
+    separator
+    return 0
+}
+
+# ============================================================
+# TUTORIALS
+# ============================================================
+
+tutorial_usb_debugging() {
+    banner
+    title "TUTORIAL: HOW TO ENABLE USB DEBUGGING"
+    echo -e "${WHITE}"
+    cat <<'TUTORIAL'
+  USB Debugging is a hidden feature in Android phones that allows
+  a computer to communicate directly with your phone. It is SAFE
+  to use as long as you don't lend your phone to untrusted people.
+
+  ────────────────────────────────────────────────────────
+  STEP 1: Enable Developer Mode
+  ────────────────────────────────────────────────────────
+  1. Open "Settings" on your Android phone
+  2. Scroll down and find "About Phone"
+     → On Samsung: Settings > About Phone > Software Information
+     → On Xiaomi: Settings > About Phone
+     → On Oppo/Realme: Settings > About Phone
+  3. Find "Build Number" (or "MIUI Version" on Xiaomi)
+  4. Tap "Build Number" 7 TIMES in a row
+  5. A message will appear: "You are now a developer!" ✓
+
+  ────────────────────────────────────────────────────────
+  STEP 2: Enable USB Debugging
+  ────────────────────────────────────────────────────────
+  1. Go back to main Settings
+  2. Find "Developer Options" (usually at the very bottom)
+     → On Samsung: Settings > Developer Options
+     → On Xiaomi: Settings > Additional Settings > Developer Options
+  3. Enable the "Developer Options" toggle (slide to ON)
+  4. Scroll down and find "USB Debugging"
+  5. Enable the "USB Debugging" toggle
+  6. A warning popup will appear — tap "OK" or "Allow"
+
+  ────────────────────────────────────────────────────────
+  STEP 3: Connect to Your Laptop
+  ────────────────────────────────────────────────────────
+  1. Plug in the USB cable from your phone to your laptop
+  2. A popup will appear on your phone: "Allow USB Debugging?"
+  3. Check "Always allow from this computer"
+  4. Tap "Allow" / "OK"
+  5. On your laptop, run: adb devices
+     → Your device ID should appear ✓
+
+  ────────────────────────────────────────────────────────
+  ⚠  SECURITY NOTE
+  ────────────────────────────────────────────────────────
+  • USB Debugging gives full access to your phone when connected
+  • Do not enable it on someone else's phone
+  • Disable it after use if your phone is shared
+  • Never tap "Allow" on popups from computers you don't trust
+
+TUTORIAL
+    echo -e "${RESET}"
+    press_enter
+}
+
+tutorial_wireless_debugging() {
+    banner
+    title "TUTORIAL: HOW TO ENABLE WIRELESS DEBUGGING (Android 11+)"
+    echo -e "${WHITE}"
+    cat <<'TUTORIAL'
+  Wireless Debugging lets you connect your phone to your laptop
+  without a USB cable, using the same WiFi network.
+  Available on Android 11 and above.
+
+  ────────────────────────────────────────────────────────
+  REQUIREMENT: Phone and Laptop on the SAME WiFi Network
+  ────────────────────────────────────────────────────────
+
+  STEP 1: Enable Wireless Debugging
+  ────────────────────────────────────────────────────────
+  1. Go to Settings > Developer Options
+     (Enable it first if not done — see USB Debugging tutorial)
+  2. Find "Wireless Debugging" or "Wi-Fi Debugging"
+  3. Enable the "Wireless Debugging" toggle
+  4. A popup will appear — tap "Allow"
+  5. Tap on "Wireless Debugging" to enter its settings
+
+  STEP 2: Note the IP and Port
+  ────────────────────────────────────────────────────────
+  Inside the Wireless Debugging menu, you will see:
+  • IP address and Port → example: 192.168.1.5:39465
+    → THIS is used for connecting
+
+  STEP 3: Pair the Device (First Time Only)
+  ────────────────────────────────────────────────────────
+  For the first time, you need to "pair":
+  1. In Wireless Debugging menu, tap "Pair device with pairing code"
+  2. You will see: IP:Port for pairing and a 6-digit code
+  3. On your laptop, run:
+     adb pair <IP>:<PAIRING_PORT>
+     Example: adb pair 192.168.1.5:43521
+  4. Enter the 6-digit code shown on your phone
+  5. You will see: "Successfully paired" ✓
+
+  STEP 4: Connect
+  ────────────────────────────────────────────────────────
+  After pairing, to connect each time:
+  adb connect <IP>:<PORT>
+  Example: adb connect 192.168.1.5:39465
+
+  ────────────────────────────────────────────────────────
+  ⚠  IMPORTANT NOTES
+  ────────────────────────────────────────────────────────
+  • The Wireless Debugging port CHANGES each time WiFi reconnects
+  • Make sure your laptop firewall doesn't block ADB connections
+  • Performance depends on your WiFi signal quality
+  • For Android 10 and below, use the WiFi via USB method instead
+
+TUTORIAL
+    echo -e "${RESET}"
+    press_enter
+}
+
+tutorial_input_security() {
+    banner
+    title "SECURITY INFO: INPUT EVENT INJECTION"
+    echo -e "${WHITE}"
+    cat <<'TUTORIAL'
+  ────────────────────────────────────────────────────────
+  WHAT IS INPUT EVENT INJECTION?
+  ────────────────────────────────────────────────────────
+  When using ScreenMirror, your laptop keyboard and mouse can
+  control your phone (clicks, typing, swiping). This is called
+  "Input Event Injection" — the laptop sends virtual touch/key
+  signals to your phone via ADB.
+
+  ────────────────────────────────────────────────────────
+  IS IT SAFE?
+  ────────────────────────────────────────────────────────
+  ✓ SAFE when:
+  • You are the only one controlling the laptop
+  • Laptop is connected to a secure WiFi (not public)
+  • You are using a direct USB cable
+  • Your phone is not shared with others
+
+  ⚠ BE CAREFUL when:
+  • Using public WiFi (cafe, mall, campus) — more vulnerable
+  • Your laptop is accessed by someone else remotely
+  • Your phone contains sensitive data (banking, passwords)
+
+  ────────────────────────────────────────────────────────
+  HOW TO MIRROR WITHOUT INPUT INJECTION (Safer)
+  ────────────────────────────────────────────────────────
+  Choose "Mirror Only (No Control)" mode when running the script.
+  In this mode, the phone screen can be viewed but not controlled
+  from the laptop — like watching a TV stream.
+
+  Flag used: scrcpy --no-control
+
+  ────────────────────────────────────────────────────────
+  RECOMMENDATIONS
+  ────────────────────────────────────────────────────────
+  • For presentations or watching: use No Control mode
+  • For personal productivity: normal mode is safe
+  • Disable USB Debugging when not connected to your laptop
+
+TUTORIAL
+    echo -e "${RESET}"
+    press_enter
+}
+
+# ============================================================
+# SCRCPY OPTIONS
+# ============================================================
+
+configure_scrcpy() {
+    title "SCRCPY SETTINGS"
+
+    echo -e "${CYAN}  Choose FPS (Frames Per Second):${RESET}"
+    echo "    1. 30 FPS  (saves battery, good for presentations)"
+    echo "    2. 60 FPS  (smooth, recommended) [DEFAULT]"
+    echo "    3. 120 FPS (ultra smooth, requires gaming phone)"
+    echo "    4. Custom"
+    read -rp "$(echo -e "${YELLOW}  FPS choice [1-4] (default: 2): ${RESET}")" fps_choice
+    fps_choice="${fps_choice:-2}"
+    case "$fps_choice" in
+        1) LAST_FPS="30" ;;
+        3) LAST_FPS="120" ;;
+        4) read -rp "$(echo -e "${YELLOW}  Enter FPS: ${RESET}")" LAST_FPS; LAST_FPS="${LAST_FPS:-60}" ;;
+        *) LAST_FPS="60" ;;
+    esac
+    info "FPS set to: $LAST_FPS"
+
+    echo ""
+    echo -e "${CYAN}  Choose Bitrate (Video Quality):${RESET}"
+    echo "    1. 4M  - Standard (slow/distant connection)"
+    echo "    2. 8M  - Good   (recommended) [DEFAULT]"
+    echo "    3. 16M - Very good (fast WiFi)"
+    echo "    4. 40M - Maximum (direct USB cable)"
+    echo "    5. Custom"
+    read -rp "$(echo -e "${YELLOW}  Bitrate choice [1-5] (default: 2): ${RESET}")" br_choice
+    br_choice="${br_choice:-2}"
+    case "$br_choice" in
+        1) LAST_BITRATE="4M" ;;
+        3) LAST_BITRATE="16M" ;;
+        4) LAST_BITRATE="40M" ;;
+        5) read -rp "$(echo -e "${YELLOW}  Enter bitrate (e.g. 10M): ${RESET}")" LAST_BITRATE; LAST_BITRATE="${LAST_BITRATE:-8M}" ;;
+        *) LAST_BITRATE="8M" ;;
+    esac
+    info "Bitrate set to: $LAST_BITRATE"
+
+    echo ""
+    echo -e "${CYAN}  Choose Max Resolution:${RESET}"
+    echo "    1. 720p  (lightweight)"
+    echo "    2. 1080p (recommended) [DEFAULT]"
+    echo "    3. 1440p (high quality, requires high-res phone)"
+    echo "    4. Full (native phone resolution)"
+    read -rp "$(echo -e "${YELLOW}  Resolution [1-4] (default: 2): ${RESET}")" res_choice
+    res_choice="${res_choice:-2}"
+    case "$res_choice" in
+        1) LAST_RESOLUTION="720" ;;
+        3) LAST_RESOLUTION="1440" ;;
+        4) LAST_RESOLUTION="0" ;;
+        *) LAST_RESOLUTION="1080" ;;
+    esac
+
+    echo ""
+    echo -e "${CYAN}  Choose Video Codec:${RESET}"
+    echo "    1. H.264  (widely compatible) [DEFAULT]"
+    echo "    2. H.265  (more efficient, needs Android 10+)"
+    echo "    3. AV1    (experimental, needs Android 14+)"
+    read -rp "$(echo -e "${YELLOW}  Codec [1-3] (default: 1): ${RESET}")" codec_choice
+    codec_choice="${codec_choice:-1}"
+    case "$codec_choice" in
+        2) LAST_CODEC="h265" ;;
+        3) LAST_CODEC="av1" ;;
+        *) LAST_CODEC="h264" ;;
+    esac
+    info "Codec set to: $LAST_CODEC"
+    separator
+}
+
+configure_extra_features() {
+    title "EXTRA FEATURES"
+
+    read -rp "$(echo -e "${YELLOW}  Enable Stay Awake (keep phone screen on during mirroring)? [y/n] (default: y): ${RESET}")" STAY_AWAKE
+    STAY_AWAKE="${STAY_AWAKE:-y}"
+
+    echo ""
+    note "Turn Screen Off: Phone screen turns off but mirroring continues on laptop"
+    read -rp "$(echo -e "${YELLOW}  Turn phone screen off? [y/n] (default: n): ${RESET}")" TURN_SCREEN_OFF
+    TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+
+    echo ""
+    note "No Control mode: View phone screen but cannot control it from laptop (safer for presentations)"
+    read -rp "$(echo -e "${YELLOW}  Enable No Control mode? [y/n] (default: n): ${RESET}")" NO_CONTROL
+    NO_CONTROL="${NO_CONTROL:-n}"
+
+    echo ""
+    read -rp "$(echo -e "${YELLOW}  Record screen to video file? [y/n] (default: n): ${RESET}")" RECORD_SCREEN
+    RECORD_SCREEN="${RECORD_SCREEN:-n}"
+    if [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]]; then
+        RECORD_FILENAME="screenmirror_$(date +%Y%m%d_%H%M%S).mp4"
+        read -rp "$(echo -e "${YELLOW}  Recording filename (default: $RECORD_FILENAME): ${RESET}")" custom_name
+        RECORD_FILENAME="${custom_name:-$RECORD_FILENAME}"
+        info "Recording will be saved to: $RECORD_FILENAME"
+    fi
+    separator
+}
+
+# ============================================================
+# BUILD SCRCPY COMMAND
+# ============================================================
+
+build_scrcpy_args() {
+    local args=()
+    args+=("--video-codec=$LAST_CODEC")
+    args+=("-b" "$LAST_BITRATE")
+    args+=("--max-fps" "$LAST_FPS")
+    [ "$LAST_RESOLUTION" != "0" ] && args+=("--max-size" "$LAST_RESOLUTION")
+    args+=("--video-buffer=50")
+    [[ "$STAY_AWAKE" =~ ^[Yy]$ ]] && args+=("--stay-awake")
+    [[ "$TURN_SCREEN_OFF" =~ ^[Yy]$ ]] && args+=("--turn-screen-off")
+    [[ "$NO_CONTROL" =~ ^[Yy]$ ]] && args+=("--no-control")
+    [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]] && args+=("--record" "$RECORD_FILENAME")
+    ([ "$LAST_CONNECTION" = "2" ] || [ "$LAST_CONNECTION" = "3" ]) && args+=("--tcpip=${LAST_IP}:${LAST_PORT}")
+    echo "${args[@]}"
+}
+
+launch_scrcpy() {
+    local args
+    args=$(build_scrcpy_args)
+    title "STARTING SCREEN MIRROR"
+    step "Running: scrcpy $args"
+    separator
+    info "Mirror window will appear shortly..."
+    info "Press Ctrl+C to stop mirroring"
+    note "Shortcuts: Ctrl+H = Home | Ctrl+B = Back | Ctrl+M = Menu"
+    separator
+    echo ""
+    # shellcheck disable=SC2086
+    scrcpy $args
+}
+
+# ============================================================
+# CONNECTION MODES
+# ============================================================
+
+connect_usb() {
+    title "USB CONNECTION"
+    adb kill-server &>/dev/null; adb start-server &>/dev/null
+    check_device || return 1
+    LAST_CONNECTION="1"
+    configure_scrcpy
+    configure_extra_features
+    save_config
+    launch_scrcpy
+}
+
+connect_wifi() {
+    title "WiFi CONNECTION (ADB TCP/IP)"
+    step "STEP 1: Make sure USB cable is still connected for initial setup"
+    adb kill-server &>/dev/null; adb start-server &>/dev/null
+    check_device || return 1
+
+    LAST_PORT="${LAST_PORT:-5555}"
+    read -rp "$(echo -e "${YELLOW}  Enter TCP port [default: $LAST_PORT]: ${RESET}")" input_port
+    LAST_PORT="${input_port:-$LAST_PORT}"
+
+    step "STEP 2: Enabling TCP/IP mode on phone..."
+    adb -s "$ACTIVE_DEVICE" tcpip "$LAST_PORT"
+    sleep 1
+
+    echo ""
+    note "Find your phone's IP: Settings > About Phone > Status > IP Address"
+    note "              OR: Settings > WiFi > (your WiFi name) > Details"
+    echo ""
+    read -rp "$(echo -e "${YELLOW}  Enter Android phone IP address: ${RESET}")" LAST_IP
+    [ -z "$LAST_IP" ] && { error "IP cannot be empty!"; return 1; }
+
+    step "STEP 3: Unplug the USB cable now, then press Enter"
+    echo -e "${RED}  ⚡ Unplug USB cable from phone first!${RESET}"
+    press_enter
+
+    step "STEP 4: Connecting via WiFi to $LAST_IP:$LAST_PORT..."
+    adb connect "${LAST_IP}:${LAST_PORT}"
+    sleep 2
+
+    if ! adb devices | grep -q "${LAST_IP}:${LAST_PORT}"; then
+        error "WiFi connection failed!"
+        warn "Make sure phone and laptop are on the same WiFi network"
+        warn "Try temporarily disabling firewall: sudo ufw disable"
+        return 1
+    fi
+
+    info "WiFi connection successful! ✓"
+    LAST_CONNECTION="2"
+    configure_scrcpy
+    configure_extra_features
+    save_config
+    launch_scrcpy
+}
+
+connect_wireless_debug() {
+    title "WIRELESS DEBUGGING (Android 11+)"
+    warn "This feature requires Android 11 or newer!"
+    note "For Android 10 and below, use the WiFi connection option instead."
+    echo ""
+
+    read -rp "$(echo -e "${YELLOW}  First time? (Pairing needed) [y/n] (default: y): ${RESET}")" DO_PAIR
+    DO_PAIR="${DO_PAIR:-y}"
+
+    if [[ "$DO_PAIR" =~ ^[Yy]$ ]]; then
+        echo ""
+        note "On your phone: Settings > Developer Options > Wireless Debugging"
+        note "              > 'Pair device with pairing code'"
+        note "Note the IP:PORT and the 6-digit pairing code"
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Enter pairing IP:PORT (e.g. 192.168.1.5:43521): ${RESET}")" PAIR_ADDR
+        read -rp "$(echo -e "${YELLOW}  Enter 6-digit pairing code from phone: ${RESET}")" PAIR_CODE
+
+        [ -z "$PAIR_ADDR" ] || [ -z "$PAIR_CODE" ] && { error "Pairing address and code cannot be empty!"; return 1; }
+
+        step "Pairing with $PAIR_ADDR..."
+        adb pair "$PAIR_ADDR" "$PAIR_CODE" || { error "Pairing failed! Check code and address."; return 1; }
+        info "Pairing successful! ✓"
+    fi
+
+    echo ""
+    note "On phone: Settings > Developer Options > Wireless Debugging"
+    note "Note the 'IP address & Port' shown at the top"
+    echo ""
+    read -rp "$(echo -e "${YELLOW}  Enter phone IP: ${RESET}")" LAST_IP
+    read -rp "$(echo -e "${YELLOW}  Enter Port (from Wireless Debugging): ${RESET}")" LAST_PORT
+    [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ] && { error "IP and Port cannot be empty!"; return 1; }
+
+    step "Connecting to ${LAST_IP}:${LAST_PORT}..."
+    adb connect "${LAST_IP}:${LAST_PORT}"
+    sleep 2
+
+    if ! adb devices | grep -q "${LAST_IP}:${LAST_PORT}"; then
+        error "Connection failed!"
+        warn "Make sure phone and laptop are on the same WiFi network"
+        return 1
+    fi
+
+    info "Wireless Debugging connection successful! ✓"
+    LAST_CONNECTION="3"
+    configure_scrcpy
+    configure_extra_features
+    save_config
+    launch_scrcpy
+}
+
+# ============================================================
+# QUICK SCREENSHOT
+# ============================================================
+
+take_screenshot() {
+    title "TAKE SCREENSHOT"
+    step "Taking screenshot from phone..."
+    local filename="screenshot_$(date +%Y%m%d_%H%M%S).png"
+    adb exec-out screencap -p > "$filename"
+    [ -f "$filename" ] && info "Screenshot saved: $filename" || error "Failed to take screenshot. Make sure phone is connected."
+    press_enter
+}
+
+# ============================================================
+# INSTALL SHORTCUT
+# ============================================================
+
+install_shortcut() {
+    title "INSTALL SHORTCUT (RUN FROM ANYWHERE)"
+    echo -e "${CYAN}  This will create 'screenmirror' and 'mulaism' commands in /usr/local/bin${RESET}"
+    echo -e "${CYAN}  so you can run the program from anywhere in your terminal.${RESET}"
+    echo ""
+    read -rp "$(echo -e "${YELLOW}  Proceed with installation? [y/n] (default: y): ${RESET}")" proceed
+    proceed="${proceed:-y}"
+    if [[ "$proceed" =~ ^[Yy]$ ]]; then
+        step "Requesting sudo permission to create symlinks..."
+        local target_dir="/usr/local/bin"
+        # Point to the root run.sh
+        local source_file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run.sh"
+        
+        sudo ln -sf "$source_file" "$target_dir/screenmirror"
+        sudo ln -sf "$source_file" "$target_dir/mulaism"
+        
+        if [ $? -eq 0 ]; then
+            info "Shortcuts created successfully!"
+            info "You can now type 'screenmirror' or 'mulaism' in your terminal."
+        else
+            error "Failed to create shortcuts. Make sure you have sudo privileges."
+        fi
+    fi
+    press_enter
+}
+
+# ============================================================
+# MAIN MENU
+# ============================================================
+
+main_menu() {
+    while true; do
+        banner
+        title "MAIN MENU"
+        echo -e "  ${CYAN}Choose connection method or option:${RESET}"
+        echo ""
+        echo -e "  ${GREEN}  ─── CONNECTION ──────────────────────────────${RESET}"
+        echo -e "  ${WHITE}  1.${RESET} 🔌 USB Connection (cable)"
+        echo -e "  ${WHITE}  2.${RESET} 📶 WiFi Connection (all Android, needs USB once)"
+        echo -e "  ${WHITE}  3.${RESET} 🛜 Wireless Debugging (Android 11+, fully wireless)"
+        echo ""
+        echo -e "  ${GREEN}  ─── TUTORIALS & INFO ────────────────────────${RESET}"
+        echo -e "  ${WHITE}  4.${RESET} 📖 Tutorial: Enable USB Debugging"
+        echo -e "  ${WHITE}  5.${RESET} 📡 Tutorial: Enable Wireless Debugging"
+        echo -e "  ${WHITE}  6.${RESET} 🔒 Security: Input Event Injection"
+        echo ""
+        echo -e "  ${GREEN}  ─── TOOLS ───────────────────────────────────${RESET}"
+        echo -e "  ${WHITE}  7.${RESET} 📸 Take Screenshot from Phone"
+        echo -e "  ${WHITE}  8.${RESET} 🔧 Check Device Compatibility"
+        echo -e "  ${WHITE}  9.${RESET} ⚙  View/Edit Saved Configuration"
+        echo -e "  ${WHITE} 10.${RESET} 🔗 Install Shortcut (Run from anywhere)"
+        echo -e "  ${WHITE}  0.${RESET} 🚪 Exit"
+        echo ""
+        separator
+        read -rp "$(echo -e "${YELLOW}  Enter choice [0-10]: ${RESET}")" choice
+
+        case "$choice" in
+            1) connect_usb ;;
+            2) connect_wifi ;;
+            3) connect_wireless_debug ;;
+            4) tutorial_usb_debugging ;;
+            5) tutorial_wireless_debugging ;;
+            6) tutorial_input_security ;;
+            7) take_screenshot ;;
+            8) check_device; press_enter ;;
+            9)
+                title "SAVED CONFIGURATION"
+                if [ -f "$CONFIG_FILE" ]; then
+                    cat "$CONFIG_FILE"
+                    echo ""
+                    read -rp "$(echo -e "${YELLOW}  Delete configuration? [y/n]: ${RESET}")" del_conf
+                    [[ "$del_conf" =~ ^[Yy]$ ]] && rm -f "$CONFIG_FILE" && info "Configuration deleted."
+                else
+                    warn "No saved configuration yet."
+                fi
+                press_enter
+                ;;
+            10) install_shortcut ;;
+            0) echo -e "\n${GREEN}  Goodbye! 👋${RESET}\n"; exit 0 ;;
+            *) warn "Invalid choice. Try again." ;;
+        esac
+    done
+}
+
+# ============================================================
+# MAIN
+# ============================================================
+
+main() {
+    banner
+    check_dependencies
+    load_config
+    main_menu
+}
+
+main
