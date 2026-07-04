@@ -542,7 +542,12 @@ build_scrcpy_args() {
     [[ "$NO_CONTROL" =~ ^[Yy]$ ]] && args+=("--no-control")
     [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]] && args+=("--record" "$RECORD_FILENAME")
     [[ "$MIRROR_CAMERA" =~ ^[Yy]$ ]] && args+=("--video-source=camera" "--camera-facing=$CAMERA_FACING")
-    [[ "$ENABLE_OTG" =~ ^[Yy]$ ]] && args+=("--otg")
+    
+    if [[ "$ENABLE_OTG" =~ ^[Yy]$ ]]; then
+        args=("--otg")
+        echo "${args[@]}"
+        return
+    fi
     
     [ "$WINDOW_OPTIONS" = "2" ] && args+=("--always-on-top")
     [ "$WINDOW_OPTIONS" = "3" ] && args+=("--window-borderless")

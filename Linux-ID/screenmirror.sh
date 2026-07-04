@@ -592,7 +592,9 @@ bangun_perintah_scrcpy() {
 
     # OTG Mode
     if [[ "$ENABLE_OTG" =~ ^[Yy]$ ]]; then
-        args+=("--otg")
+        args=("--otg")
+        echo "${args[@]}"
+        return
     fi
 
     # Window Options

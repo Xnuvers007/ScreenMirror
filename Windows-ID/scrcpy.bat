@@ -296,6 +296,17 @@ goto :eof
 echo.
 echo   %ESC%[35m  === FITUR TAMBAHAN ===%ESC%[0m
 echo.
+set "MIRROR_CAMERA="
+set "CAMERA_FACING="
+set "ENABLE_OTG="
+set "WINDOW_OPTIONS="
+set "FORWARD_AUDIO="
+set "ADVANCED_KEYBOARD="
+set "STAY_AWAKE="
+set "TURN_SCREEN_OFF="
+set "NO_CONTROL="
+set "RECORD_SCREEN="
+set "RECORD_FILENAME="
 set /p "MIRROR_CAMERA=  Gunakan kamera HP sebagai tampilan (Camera Mirroring)? [y/n] (default: n): "
 if "!MIRROR_CAMERA!"=="" set "MIRROR_CAMERA=n"
 if /i "!MIRROR_CAMERA!"=="y" (
