@@ -1038,6 +1038,30 @@ install_shortcut() {
 }
 
 # ============================================================
+# CEK UPDATE
+# ============================================================
+
+cek_update() {
+    title "CEK UPDATE"
+    info "Mengecek versi terbaru di GitHub..."
+    LATEST_VER=$(curl -s https://api.github.com/repos/Xnuvers007/ScreenMirror/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$LATEST_VER" ]; then
+        error "Gagal mengecek update. Pastikan koneksi internet aktif atau curl terinstall."
+    else
+        if [ "$LATEST_VER" = "$SCRIPT_VERSION" ]; then
+            ok "ScreenMirror sudah menggunakan versi terbaru ($SCRIPT_VERSION)."
+        else
+            warn "Versi baru tersedia: $LATEST_VER (Versi saat ini: $SCRIPT_VERSION)"
+            echo ""
+            info "Silakan download versi terbaru di:"
+            info "https://github.com/Xnuvers007/ScreenMirror/releases/latest"
+        fi
+    fi
+    echo ""
+    tekan_enter
+}
+
+# ============================================================
 # MENU UTAMA
 # ============================================================
 
@@ -1062,10 +1086,11 @@ menu_utama() {
         echo -e "  ${WHITE}  8.${RESET} 🔧 Cek Kompatibilitas Perangkat"
         echo -e "  ${WHITE}  9.${RESET} ⚙  Lihat/Edit Konfigurasi Tersimpan"
         echo -e "  ${WHITE} 10.${RESET} 🔗 Install Shortcut (Jalankan dari mana saja)"
+        echo -e "  ${WHITE}  c.${RESET} 🔄 Cek Update ScreenMirror"
         echo -e "  ${WHITE}  0.${RESET} 🚪 Keluar"
         echo ""
         separator
-        read -rp "$(echo -e "${YELLOW}  Masukkan pilihan [0-10]: ${RESET}")" choice
+        read -rp "$(echo -e "${YELLOW}  Masukkan pilihan [0-10,c]: ${RESET}")" choice
 
         case "$choice" in
             1) koneksi_usb ;;
@@ -1107,6 +1132,7 @@ menu_utama() {
                 tekan_enter
                 ;;
             10) install_shortcut ;;
+            [cC]) cek_update ;;
             0) echo -e "\n${GREEN}  Sampai jumpa! 👋${RESET}\n"; exit 0 ;;
             *) warn "Pilihan tidak valid. Coba lagi." ;;
         esac
@@ -1120,6 +1146,41 @@ menu_utama() {
 main() {
     banner
     cek_dependensi
+
+    # Auto Update Check
+    echo -e "${CYAN}  Mengecek pembaruan ScreenMirror...${RESET}"
+    LATEST_VER=$(curl -s --max-time 3 https://api.github.com/repos/Xnuvers007/ScreenMirror/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -n "$LATEST_VER" ] && [ "$LATEST_VER" != "$SCRIPT_VERSION" ]; then
+        echo ""
+        echo -e "${YELLOW}  =================================================================${RESET}"
+        echo -e "${YELLOW}   UPDATE TERSEDIA: $LATEST_VER (Versi saat ini: $SCRIPT_VERSION)${RESET}"
+        echo -e "${YELLOW}   Download manual di: https://github.com/Xnuvers007/ScreenMirror/releases/latest${RESET}"
+        echo -e "${YELLOW}  =================================================================${RESET}"
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Update sekarang? (Otomatis download & install) [y/n] (default: n): ${RESET}")" DO_UPDATE
+        DO_UPDATE="${DO_UPDATE:-n}"
+        if [[ "$DO_UPDATE" =~ ^[Yy]$ ]]; then
+            info "Mendownload update ($LATEST_VER)..."
+            curl -L -s -o update.zip "https://github.com/Xnuvers007/ScreenMirror/archive/refs/tags/${LATEST_VER}.zip"
+            if [ -f "update.zip" ]; then
+                info "Mengekstrak update..."
+                unzip -q update.zip -d update_tmp
+                info "Menginstal update..."
+                PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+                if [ "$(basename "$PROJECT_DIR")" = "Linux-ID" ]; then
+                    PROJECT_DIR="$(dirname "$PROJECT_DIR")"
+                fi
+                cp -r update_tmp/ScreenMirror-${LATEST_VER#v}/* "$PROJECT_DIR/"
+                rm -rf update_tmp update.zip
+                ok "Update berhasil! Silakan buka kembali ScreenMirror."
+                exit 0
+            else
+                error "Gagal mendownload update."
+                sleep 3
+            fi
+        fi
+    fi
+
     muat_config
     menu_utama
 }

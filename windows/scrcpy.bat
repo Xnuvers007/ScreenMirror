@@ -27,6 +27,7 @@ if %errorLevel% neq 0 (
 :: --- Config File ---
 set "CONFIG_FILE=%APPDATA%\screenmirror_config.ini"
 set "SCRCPY_DOWNLOAD_VER=4.0"
+set "SCRIPT_VERSION=v6.0.1"
 
 :: --- Load saved config ---
 call :LOAD_CONFIG
@@ -67,6 +68,39 @@ if %errorLevel% equ 0 (
 set "PROJECT_DIR=%~dp0.."
 call :ADD_TO_PATH "!PROJECT_DIR!"
 if defined SCRCPY_PATH call :ADD_TO_PATH "!SCRCPY_PATH!"
+
+:: --- Auto Update Check ---
+call :PRINT_BANNER
+echo   %ESC%[36m  Checking for ScreenMirror updates...%ESC%[0m
+for /f "usebackq tokens=*" %%v in (`powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; $tag=(Invoke-RestMethod -Uri 'https://api.github.com/repos/Xnuvers007/ScreenMirror/releases/latest' -TimeoutSec 3).tag_name; if ($tag) { Write-Output $tag }"`) do set "LATEST_VER=%%v"
+if not "!LATEST_VER!"=="" if not "!LATEST_VER!"=="!SCRIPT_VERSION!" (
+    echo.
+    echo   %ESC%[33m=================================================================%ESC%[0m
+    echo   %ESC%[33m  UPDATE AVAILABLE: !LATEST_VER! (Current version: !SCRIPT_VERSION!)%ESC%[0m
+    echo   %ESC%[33m  Manual download at: https://github.com/Xnuvers007/ScreenMirror/releases%ESC%[0m
+    echo   %ESC%[33m=================================================================%ESC%[0m
+    echo.
+    set /p "DO_UPDATE=  Update now? (Auto download ^& install) [y/n] (default: n): "
+    if /i "!DO_UPDATE!"=="y" (
+        call :NOTE "Downloading update (!LATEST_VER!)..."
+        powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://github.com/Xnuvers007/ScreenMirror/archive/refs/tags/!LATEST_VER!.zip' -OutFile 'update.zip'"
+        if exist "update.zip" (
+            call :NOTE "Extracting update..."
+            powershell -NoProfile -Command "Expand-Archive -Path 'update.zip' -DestinationPath 'update_tmp' -Force"
+            call :NOTE "Installing update..."
+            xcopy /s /y /q "update_tmp\ScreenMirror-!LATEST_VER:~1!\*" "!PROJECT_DIR!\" >nul
+            rmdir /s /q "update_tmp"
+            del /q "update.zip"
+            call :OK "Update successful! Please restart ScreenMirror."
+            echo.
+            pause
+            exit /b 0
+        ) else (
+            call :ERR "Failed to download update."
+            timeout /t 3 /nobreak >nul
+        )
+    )
+)
 
 goto :MAIN_MENU
 
@@ -1114,7 +1148,8 @@ echo.
 echo   %ESC%[36m  --- TOOLS -------------------------------------------%ESC%[0m
 echo   %ESC%[37m  7.%ESC%[0m Take Screenshot from Phone
 echo   %ESC%[37m  8.%ESC%[0m Download ^& Install Dependencies
-echo   %ESC%[37m  9.%ESC%[0m View/Delete Saved Configuration
+echo   %ESC%[37m  9.%ESC%[0m View/Clear Saved Configuration
+echo   %ESC%[37m  c.%ESC%[0m Check for ScreenMirror Updates
 echo   %ESC%[37m  0.%ESC%[0m Exit
 echo.
 call :PRINT_SEP
@@ -1130,6 +1165,7 @@ if "!choice!"=="6" goto :TUTORIAL_SECURITY
 if "!choice!"=="7" goto :TAKE_SCREENSHOT
 if "!choice!"=="8" goto :INSTALL_MENU
 if "!choice!"=="9" goto :VIEW_CONFIG
+if /i "!choice!"=="c" goto :CHECK_UPDATE
 if "!choice!"=="0" (
     echo.
     echo   Goodbye! Thank you for using ScreenMirror.
@@ -1138,6 +1174,29 @@ if "!choice!"=="0" (
 )
 call :WARN "Invalid choice. Try again."
 timeout /t 1 /nobreak >nul
+goto :MAIN_MENU
+
+:CHECK_UPDATE
+call :PRINT_BANNER
+echo.
+echo   %ESC%[35m  === CHECK FOR UPDATES ===%ESC%[0m
+echo.
+call :NOTE "Checking for the latest version on GitHub..."
+for /f "usebackq tokens=*" %%v in (`powershell -NoProfile -Command "(Invoke-RestMethod -Uri 'https://api.github.com/repos/Xnuvers007/ScreenMirror/releases/latest' -ErrorAction SilentlyContinue).tag_name"`) do set "LATEST_VER=%%v"
+if "!LATEST_VER!"=="" (
+    call :ERR "Failed to check for updates. Please check your internet connection."
+) else (
+    if "!LATEST_VER!"=="!SCRIPT_VERSION!" (
+        call :OK "ScreenMirror is up to date (!SCRIPT_VERSION!)."
+    ) else (
+        call :WARN "A new version is available: !LATEST_VER! (Current: !SCRIPT_VERSION!)"
+        echo.
+        call :NOTE "Please download the latest version at:"
+        call :NOTE "https://github.com/Xnuvers007/ScreenMirror/releases/latest"
+    )
+)
+echo.
+pause
 goto :MAIN_MENU
 
 :ADD_TO_PATH

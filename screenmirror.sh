@@ -928,6 +928,30 @@ install_shortcut() {
 }
 
 # ============================================================
+# CHECK UPDATE
+# ============================================================
+
+check_update() {
+    title "CHECK FOR UPDATES"
+    info "Checking for the latest version on GitHub..."
+    LATEST_VER=$(curl -s https://api.github.com/repos/Xnuvers007/ScreenMirror/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$LATEST_VER" ]; then
+        error "Failed to check for updates. Please check your internet connection or install curl."
+    else
+        if [ "$LATEST_VER" = "$SCRIPT_VERSION" ]; then
+            ok "ScreenMirror is up to date ($SCRIPT_VERSION)."
+        else
+            warn "A new version is available: $LATEST_VER (Current: $SCRIPT_VERSION)"
+            echo ""
+            info "Please download the latest version at:"
+            info "https://github.com/Xnuvers007/ScreenMirror/releases/latest"
+        fi
+    fi
+    echo ""
+    press_enter
+}
+
+# ============================================================
 # MAIN MENU
 # ============================================================
 
@@ -952,10 +976,11 @@ main_menu() {
         echo -e "  ${WHITE}  8.${RESET} 🔧 Check Device Compatibility"
         echo -e "  ${WHITE}  9.${RESET} ⚙  View/Edit Saved Configuration"
         echo -e "  ${WHITE} 10.${RESET} 🔗 Install Shortcut (Run from anywhere)"
+        echo -e "  ${WHITE}  c.${RESET} 🔄 Check for ScreenMirror Updates"
         echo -e "  ${WHITE}  0.${RESET} 🚪 Exit"
         echo ""
         separator
-        read -rp "$(echo -e "${YELLOW}  Enter choice [0-10]: ${RESET}")" choice
+        read -rp "$(echo -e "${YELLOW}  Enter choice [0-10,c]: ${RESET}")" choice
 
         case "$choice" in
             1) connect_usb ;;
@@ -997,6 +1022,7 @@ main_menu() {
                 press_enter
                 ;;
             10) install_shortcut ;;
+            [cC]) check_update ;;
             0) echo -e "\n${GREEN}  Goodbye! 👋${RESET}\n"; exit 0 ;;
             *) warn "Invalid choice. Try again." ;;
         esac
@@ -1010,6 +1036,38 @@ main_menu() {
 main() {
     banner
     check_dependencies
+
+    # Auto Update Check
+    echo -e "${CYAN}  Checking for ScreenMirror updates...${RESET}"
+    LATEST_VER=$(curl -s --max-time 3 https://api.github.com/repos/Xnuvers007/ScreenMirror/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -n "$LATEST_VER" ] && [ "$LATEST_VER" != "$SCRIPT_VERSION" ]; then
+        echo ""
+        echo -e "${YELLOW}  =================================================================${RESET}"
+        echo -e "${YELLOW}   UPDATE AVAILABLE: $LATEST_VER (Current version: $SCRIPT_VERSION)${RESET}"
+        echo -e "${YELLOW}   Manual download at: https://github.com/Xnuvers007/ScreenMirror/releases/latest${RESET}"
+        echo -e "${YELLOW}  =================================================================${RESET}"
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Update now? (Auto download & install) [y/n] (default: n): ${RESET}")" DO_UPDATE
+        DO_UPDATE="${DO_UPDATE:-n}"
+        if [[ "$DO_UPDATE" =~ ^[Yy]$ ]]; then
+            info "Downloading update ($LATEST_VER)..."
+            curl -L -s -o update.zip "https://github.com/Xnuvers007/ScreenMirror/archive/refs/tags/${LATEST_VER}.zip"
+            if [ -f "update.zip" ]; then
+                info "Extracting update..."
+                unzip -q update.zip -d update_tmp
+                info "Installing update..."
+                PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+                cp -r update_tmp/ScreenMirror-${LATEST_VER#v}/* "$PROJECT_DIR/"
+                rm -rf update_tmp update.zip
+                ok "Update successful! Please restart ScreenMirror."
+                exit 0
+            else
+                error "Failed to download update."
+                sleep 3
+            fi
+        fi
+    fi
+
     load_config
     main_menu
 }
