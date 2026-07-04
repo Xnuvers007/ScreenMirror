@@ -462,18 +462,58 @@ configure_scrcpy() {
 configure_extra_features() {
     title "EXTRA FEATURES"
 
-    read -rp "$(echo -e "${YELLOW}  Enable Stay Awake (keep phone screen on during mirroring)? [y/n] (default: y): ${RESET}")" STAY_AWAKE
-    STAY_AWAKE="${STAY_AWAKE:-y}"
+    # Camera Mirroring
+    echo -e "${CYAN}  Camera Mirroring (Use phone camera as display?):${RESET}"
+    read -rp "$(echo -e "${YELLOW}  Use phone camera? [y/n] (default: n): ${RESET}")" MIRROR_CAMERA
+    MIRROR_CAMERA="${MIRROR_CAMERA:-n}"
+    if [[ "$MIRROR_CAMERA" =~ ^[Yy]$ ]]; then
+        read -rp "$(echo -e "${YELLOW}  Select camera [front/back/external] (default: back): ${RESET}")" CAMERA_FACING
+        CAMERA_FACING="${CAMERA_FACING:-back}"
+    fi
 
     echo ""
-    note "Turn Screen Off: Phone screen turns off but mirroring continues on laptop"
-    read -rp "$(echo -e "${YELLOW}  Turn phone screen off? [y/n] (default: n): ${RESET}")" TURN_SCREEN_OFF
-    TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+    # OTG Mode
+    echo -e "${CYAN}  OTG Mode (Bypass screen blocks like games/banks. Requires USB cable):${RESET}"
+    read -rp "$(echo -e "${YELLOW}  Enable OTG Mode? [y/n] (default: n): ${RESET}")" ENABLE_OTG
+    ENABLE_OTG="${ENABLE_OTG:-n}"
 
-    echo ""
-    note "No Control mode: View phone screen but cannot control it from laptop (safer for presentations)"
-    read -rp "$(echo -e "${YELLOW}  Enable No Control mode? [y/n] (default: n): ${RESET}")" NO_CONTROL
-    NO_CONTROL="${NO_CONTROL:-n}"
+    if [[ ! "$ENABLE_OTG" =~ ^[Yy]$ ]]; then
+        echo ""
+        # Window Options
+        echo -e "${CYAN}  Window Options (Always on Top / Borderless):${RESET}"
+        echo "    1. Normal"
+        echo "    2. Always on Top"
+        echo "    3. Borderless"
+        echo "    4. Top & Borderless"
+        read -rp "$(echo -e "${YELLOW}  Choose option [1-4] (default: 1): ${RESET}")" WINDOW_OPTIONS
+        WINDOW_OPTIONS="${WINDOW_OPTIONS:-1}"
+
+        echo ""
+        # Audio Control
+        echo -e "${CYAN}  Audio Control (Scrcpy v4 forwards audio automatically):${RESET}"
+        read -rp "$(echo -e "${YELLOW}  Forward phone audio to laptop? [y/n] (default: y): ${RESET}")" FORWARD_AUDIO
+        FORWARD_AUDIO="${FORWARD_AUDIO:-y}"
+
+        echo ""
+        # Advanced Keyboard
+        echo -e "${CYAN}  Keyboard Mode (100% accurate physical simulation):${RESET}"
+        read -rp "$(echo -e "${YELLOW}  Use physical keyboard mode (uhid)? [y/n] (default: n): ${RESET}")" ADVANCED_KEYBOARD
+        ADVANCED_KEYBOARD="${ADVANCED_KEYBOARD:-n}"
+
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Enable Stay Awake (keep phone screen on during mirroring)? [y/n] (default: y): ${RESET}")" STAY_AWAKE
+        STAY_AWAKE="${STAY_AWAKE:-y}"
+
+        echo ""
+        note "Turn Screen Off: Phone screen turns off but mirroring continues on laptop"
+        read -rp "$(echo -e "${YELLOW}  Turn phone screen off? [y/n] (default: n): ${RESET}")" TURN_SCREEN_OFF
+        TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+
+        echo ""
+        note "No Control mode: View phone screen but cannot control it from laptop (safer for presentations)"
+        read -rp "$(echo -e "${YELLOW}  Enable No Control mode? [y/n] (default: n): ${RESET}")" NO_CONTROL
+        NO_CONTROL="${NO_CONTROL:-n}"
+    fi
 
     echo ""
     read -rp "$(echo -e "${YELLOW}  Record screen to video file? [y/n] (default: n): ${RESET}")" RECORD_SCREEN
@@ -501,6 +541,15 @@ build_scrcpy_args() {
     [[ "$TURN_SCREEN_OFF" =~ ^[Yy]$ ]] && args+=("--turn-screen-off")
     [[ "$NO_CONTROL" =~ ^[Yy]$ ]] && args+=("--no-control")
     [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]] && args+=("--record" "$RECORD_FILENAME")
+    [[ "$MIRROR_CAMERA" =~ ^[Yy]$ ]] && args+=("--video-source=camera" "--camera-facing=$CAMERA_FACING")
+    [[ "$ENABLE_OTG" =~ ^[Yy]$ ]] && args+=("--otg")
+    
+    [ "$WINDOW_OPTIONS" = "2" ] && args+=("--always-on-top")
+    [ "$WINDOW_OPTIONS" = "3" ] && args+=("--window-borderless")
+    [ "$WINDOW_OPTIONS" = "4" ] && args+=("--always-on-top" "--window-borderless")
+    [[ ! "$FORWARD_AUDIO" =~ ^[Yy]$ ]] && args+=("--no-audio")
+    [[ "$ADVANCED_KEYBOARD" =~ ^[Yy]$ ]] && args+=("--keyboard=uhid")
+
     echo "${args[@]}"
 }
 
@@ -605,12 +654,35 @@ connect_wireless_debug() {
     fi
 
     echo ""
-    note "On phone: Settings > Developer Options > Wireless Debugging"
-    note "Note the 'IP address & Port' shown at the top"
-    echo ""
-    read -rp "$(echo -e "${YELLOW}  Enter phone IP: ${RESET}")" LAST_IP
-    read -rp "$(echo -e "${YELLOW}  Enter Port (from Wireless Debugging): ${RESET}")" LAST_PORT
-    [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ] && { error "IP and Port cannot be empty!"; return 1; }
+    read -rp "$(echo -e "${YELLOW}  Auto-detect phone IP on this WiFi network? [y/n] (default: y): ${RESET}")" DO_MDNS
+    DO_MDNS="${DO_MDNS:-y}"
+
+    if [[ "$DO_MDNS" =~ ^[Yy]$ ]]; then
+        step "Scanning for Wireless Debugging devices..."
+        local mdns_found
+        mdns_found=$(adb mdns services 2>/dev/null | grep "adb-tls-connect" | awk '{print $3}')
+        if [ -n "$mdns_found" ]; then
+            info "Device found: $mdns_found"
+            LAST_IP="${mdns_found%:*}"
+            LAST_PORT="${mdns_found#*:}"
+            DO_MANUAL="n"
+        else
+            warn "No auto-detected device, please enter manually."
+            DO_MANUAL="y"
+        fi
+    else
+        DO_MANUAL="y"
+    fi
+
+    if [ "$DO_MANUAL" = "y" ]; then
+        echo ""
+        note "On phone: Settings > Developer Options > Wireless Debugging"
+        note "Note the 'IP address & Port' shown at the top"
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Enter phone IP: ${RESET}")" LAST_IP
+        read -rp "$(echo -e "${YELLOW}  Enter Port (from Wireless Debugging): ${RESET}")" LAST_PORT
+        [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ] && { error "IP and Port cannot be empty!"; return 1; }
+    fi
 
     step "Connecting to ${LAST_IP}:${LAST_PORT}..."
     adb connect "${LAST_IP}:${LAST_PORT}"

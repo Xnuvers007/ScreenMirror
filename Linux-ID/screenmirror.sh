@@ -474,24 +474,64 @@ atur_scrcpy_options() {
 atur_fitur_tambahan() {
     title "FITUR TAMBAHAN"
 
-    # Stay Awake
-    echo -e "${CYAN}  Stay Awake (Layar HP tetap menyala selama mirroring?):${RESET}"
-    read -rp "$(echo -e "${YELLOW}  Aktifkan Stay Awake? [y/n] (default: y): ${RESET}")" STAY_AWAKE
-    STAY_AWAKE="${STAY_AWAKE:-y}"
+    # Camera Mirroring
+    echo -e "${CYAN}  Camera Mirroring (Gunakan kamera HP sebagai tampilan?):${RESET}"
+    read -rp "$(echo -e "${YELLOW}  Gunakan kamera HP? [y/n] (default: n): ${RESET}")" MIRROR_CAMERA
+    MIRROR_CAMERA="${MIRROR_CAMERA:-n}"
+    if [[ "$MIRROR_CAMERA" =~ ^[Yy]$ ]]; then
+        read -rp "$(echo -e "${YELLOW}  Pilih kamera [front/back/external] (default: back): ${RESET}")" CAMERA_FACING
+        CAMERA_FACING="${CAMERA_FACING:-back}"
+    fi
 
-    # Turn Screen Off
     echo ""
-    echo -e "${CYAN}  Turn Screen Off (Matikan layar HP tapi mirror tetap jalan?):${RESET}"
-    note "Berguna untuk hemat baterai HP, layar HP mati tapi di laptop tetap tampil"
-    read -rp "$(echo -e "${YELLOW}  Matikan layar HP? [y/n] (default: n): ${RESET}")" TURN_SCREEN_OFF
-    TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+    # OTG Mode
+    echo -e "${CYAN}  OTG Mode (Bypass blokir layar game/bank. Harus pakai kabel USB):${RESET}"
+    read -rp "$(echo -e "${YELLOW}  Aktifkan OTG Mode? [y/n] (default: n): ${RESET}")" ENABLE_OTG
+    ENABLE_OTG="${ENABLE_OTG:-n}"
 
-    # No Control
-    echo ""
-    echo -e "${CYAN}  No Control Mode (Mirror saja, tidak bisa kontrol HP dari laptop?):${RESET}"
-    note "Mode aman untuk presentasi — keyboard/mouse tidak mempengaruhi HP"
-    read -rp "$(echo -e "${YELLOW}  Aktifkan No Control? [y/n] (default: n): ${RESET}")" NO_CONTROL
-    NO_CONTROL="${NO_CONTROL:-n}"
+    if [[ ! "$ENABLE_OTG" =~ ^[Yy]$ ]]; then
+        echo ""
+        # Window Options
+        echo -e "${CYAN}  Tampilan Jendela (Always on Top / Borderless):${RESET}"
+        echo "    1. Normal"
+        echo "    2. Always on Top (Selalu di atas)"
+        echo "    3. Borderless (Tanpa bingkai)"
+        echo "    4. Top & Borderless"
+        read -rp "$(echo -e "${YELLOW}  Pilih opsi [1-4] (default: 1): ${RESET}")" WINDOW_OPTIONS
+        WINDOW_OPTIONS="${WINDOW_OPTIONS:-1}"
+
+        echo ""
+        # Audio Control
+        echo -e "${CYAN}  Kontrol Suara (Scrcpy v4 meneruskan suara otomatis):${RESET}"
+        read -rp "$(echo -e "${YELLOW}  Teruskan suara HP ke laptop? [y/n] (default: y): ${RESET}")" FORWARD_AUDIO
+        FORWARD_AUDIO="${FORWARD_AUDIO:-y}"
+
+        echo ""
+        # Advanced Keyboard
+        echo -e "${CYAN}  Mode Keyboard (Fisik 100% akurat tanpa delay):${RESET}"
+        read -rp "$(echo -e "${YELLOW}  Gunakan mode keyboard fisik (uhid)? [y/n] (default: n): ${RESET}")" ADVANCED_KEYBOARD
+        ADVANCED_KEYBOARD="${ADVANCED_KEYBOARD:-n}"
+
+        echo ""
+        # Stay Awake
+        echo -e "${CYAN}  Stay Awake (Layar HP tetap menyala selama mirroring?):${RESET}"
+        read -rp "$(echo -e "${YELLOW}  Aktifkan Stay Awake? [y/n] (default: y): ${RESET}")" STAY_AWAKE
+        STAY_AWAKE="${STAY_AWAKE:-y}"
+
+        # Turn Screen Off
+        echo ""
+        echo -e "${CYAN}  Turn Screen Off (Matikan layar HP tapi mirror tetap jalan?):${RESET}"
+        note "Berguna untuk hemat baterai HP, layar HP mati tapi di laptop tetap tampil"
+        read -rp "$(echo -e "${YELLOW}  Matikan layar HP? [y/n] (default: n): ${RESET}")" TURN_SCREEN_OFF
+        TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+
+        # No Control
+        echo ""
+        echo -e "${CYAN}  No Control Mode (Mirror saja, tidak bisa kontrol HP dari laptop?):${RESET}"
+        note "Mode aman untuk presentasi — keyboard/mouse tidak mempengaruhi HP"
+        read -rp "$(echo -e "${YELLOW}  Aktifkan No Control? [y/n] (default: n): ${RESET}")" NO_CONTROL
+        NO_CONTROL="${NO_CONTROL:-n}"
+    fi
 
     # Record Screen
     echo ""
@@ -544,6 +584,27 @@ bangun_perintah_scrcpy() {
     if [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]]; then
         args+=("--record" "$RECORD_FILENAME")
     fi
+
+    # Camera Mirroring
+    if [[ "$MIRROR_CAMERA" =~ ^[Yy]$ ]]; then
+        args+=("--video-source=camera" "--camera-facing=$CAMERA_FACING")
+    fi
+
+    # OTG Mode
+    if [[ "$ENABLE_OTG" =~ ^[Yy]$ ]]; then
+        args+=("--otg")
+    fi
+
+    # Window Options
+    if [ "$WINDOW_OPTIONS" = "2" ]; then args+=("--always-on-top"); fi
+    if [ "$WINDOW_OPTIONS" = "3" ]; then args+=("--window-borderless"); fi
+    if [ "$WINDOW_OPTIONS" = "4" ]; then args+=("--always-on-top" "--window-borderless"); fi
+
+    # Audio Control
+    if [[ ! "$FORWARD_AUDIO" =~ ^[Yy]$ ]]; then args+=("--no-audio"); fi
+
+    # Advanced Keyboard
+    if [[ "$ADVANCED_KEYBOARD" =~ ^[Yy]$ ]]; then args+=("--keyboard=uhid"); fi
 
     echo "${args[@]}"
 }
@@ -697,15 +758,38 @@ koneksi_wireless_debug() {
     fi
 
     echo ""
-    note "Di HP: Pengaturan > Opsi Pengembang > Wireless Debugging"
-    note "Catat 'IP address & Port' yang tertulis di bagian atas"
-    echo ""
-    read -rp "$(echo -e "${YELLOW}  Masukkan IP HP: ${RESET}")" LAST_IP
-    read -rp "$(echo -e "${YELLOW}  Masukkan Port (dari Wireless Debugging): ${RESET}")" LAST_PORT
+    read -rp "$(echo -e "${YELLOW}  Cari IP HP secara otomatis di jaringan WiFi ini? [y/n] (default: y): ${RESET}")" DO_MDNS
+    DO_MDNS="${DO_MDNS:-y}"
 
-    if [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ]; then
-        error "IP dan Port tidak boleh kosong!"
-        return 1
+    if [[ "$DO_MDNS" =~ ^[Yy]$ ]]; then
+        step "Mencari perangkat Wireless Debugging..."
+        local mdns_found
+        mdns_found=$(adb mdns services 2>/dev/null | grep "adb-tls-connect" | awk '{print $3}')
+        if [ -n "$mdns_found" ]; then
+            info "Perangkat ditemukan: $mdns_found"
+            LAST_IP="${mdns_found%:*}"
+            LAST_PORT="${mdns_found#*:}"
+            DO_MANUAL="n"
+        else
+            warn "Tidak ditemukan perangkat otomatis, silakan masukkan manual."
+            DO_MANUAL="y"
+        fi
+    else
+        DO_MANUAL="y"
+    fi
+
+    if [ "$DO_MANUAL" = "y" ]; then
+        echo ""
+        note "Di HP: Pengaturan > Opsi Pengembang > Wireless Debugging"
+        note "Catat Alamat IP dan Port di bagian atas"
+        echo ""
+        read -rp "$(echo -e "${YELLOW}  Masukkan IP HP: ${RESET}")" LAST_IP
+        read -rp "$(echo -e "${YELLOW}  Masukkan Port (dari Wireless Debugging): ${RESET}")" LAST_PORT
+
+        if [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ]; then
+            error "IP dan Port tidak boleh kosong!"
+            return 1
+        fi
     fi
 
     step "Menghubungkan ke ${LAST_IP}:${LAST_PORT}..."

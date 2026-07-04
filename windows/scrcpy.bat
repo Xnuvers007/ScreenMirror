@@ -165,7 +165,14 @@ if defined ADB_EXE (
     "%ADB_EXE%" devices
 ) else (
     call :ERR "ADB not found! Please install scrcpy first."
-    goto :INSTALL_MENU
+    echo.
+    set /p "DO_AUTO=  Do you want to download and install it automatically now? [y/n] (default: y): "
+    if "!DO_AUTO!"=="" set "DO_AUTO=y"
+    if /i "!DO_AUTO!"=="y" (
+        goto :AUTO_INSTALL
+    ) else (
+        goto :INSTALL_MENU
+    )
 )
 
 echo.
@@ -287,20 +294,49 @@ goto :eof
 
 :CONFIGURE_FEATURES
 echo.
-echo   %ESC%[35m  === EXTRA FEATURES ===%ESC%[0m
+echo   %ESC%[35m  === ADDITIONAL FEATURES ===%ESC%[0m
 echo.
-set /p "STAY_AWAKE=  Keep phone screen on (Stay Awake)? [y/n] (default: y): "
-if "!STAY_AWAKE!"=="" set "STAY_AWAKE=y"
+set /p "MIRROR_CAMERA=  Use phone camera as display (Camera Mirroring)? [y/n] (default: n): "
+if "!MIRROR_CAMERA!"=="" set "MIRROR_CAMERA=n"
+if /i "!MIRROR_CAMERA!"=="y" (
+    set /p "CAMERA_FACING=  Select camera [front/back/external] (default: back): "
+    if "!CAMERA_FACING!"=="" set "CAMERA_FACING=back"
+)
 
 echo.
-call :NOTE "Turn Screen Off: Phone screen turns off but mirroring continues on laptop"
-set /p "TURN_SCREEN_OFF=  Turn phone screen off? [y/n] (default: n): "
-if "!TURN_SCREEN_OFF!"=="" set "TURN_SCREEN_OFF=n"
+call :NOTE "OTG Mode: Bypass screen blocks (games/banks). Requires USB cable, phone screen not mirrored."
+set /p "ENABLE_OTG=  Enable OTG Mode? [y/n] (default: n): "
+if "!ENABLE_OTG!"=="" set "ENABLE_OTG=n"
 
-echo.
-call :NOTE "No Control: View only, cannot control phone from laptop (safer for presentations)"
-set /p "NO_CONTROL=  Enable No Control mode? [y/n] (default: n): "
-if "!NO_CONTROL!"=="" set "NO_CONTROL=n"
+if /i not "!ENABLE_OTG!"=="y" (
+    call :NOTE "Window Options: Always on Top / Borderless"
+    set /p "WINDOW_OPTIONS=  Choose: [1] Normal [2] Always on Top [3] Borderless [4] Top & Borderless (default: 1): "
+    if "!WINDOW_OPTIONS!"=="" set "WINDOW_OPTIONS=1"
+
+    echo.
+    call :NOTE "Audio Control: Scrcpy v4 forwards audio automatically (Android 11+)."
+    set /p "FORWARD_AUDIO=  Forward phone audio to laptop? [y/n] (default: y): "
+    if "!FORWARD_AUDIO!"=="" set "FORWARD_AUDIO=y"
+    
+    echo.
+    call :NOTE "Keyboard Mode: 'uhid' simulates a physical keyboard 100% accurately without delay."
+    set /p "ADVANCED_KEYBOARD=  Use physical keyboard mode (uhid)? [y/n] (default: n): "
+    if "!ADVANCED_KEYBOARD!"=="" set "ADVANCED_KEYBOARD=n"
+
+    echo.
+    set /p "STAY_AWAKE=  Keep phone screen awake? [y/n] (default: y): "
+    if "!STAY_AWAKE!"=="" set "STAY_AWAKE=y"
+
+    echo.
+    call :NOTE "Turn Screen Off: Phone screen turns off but mirroring continues on laptop"
+    set /p "TURN_SCREEN_OFF=  Turn off phone screen? [y/n] (default: n): "
+    if "!TURN_SCREEN_OFF!"=="" set "TURN_SCREEN_OFF=n"
+
+    echo.
+    call :NOTE "No Control: View only, cannot control phone from laptop (safe for presentation)"
+    set /p "NO_CONTROL=  Enable No Control mode? [y/n] (default: n): "
+    if "!NO_CONTROL!"=="" set "NO_CONTROL=n"
+)
 
 echo.
 set /p "RECORD_SCREEN=  Record screen to video? [y/n] (default: n): "
@@ -309,7 +345,7 @@ if /i "!RECORD_SCREEN!"=="y" (
     set "RECORD_FILENAME=screenmirror_%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%.mp4"
     set /p "custom_rec=  Recording filename (press Enter for default): "
     if not "!custom_rec!"=="" set "RECORD_FILENAME=!custom_rec!"
-    call :OK "Recording: !RECORD_FILENAME!"
+    call :OK "Recording to: !RECORD_FILENAME!"
 )
 goto :eof
 
@@ -328,6 +364,13 @@ if /i "!STAY_AWAKE!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --stay-awake"
 if /i "!TURN_SCREEN_OFF!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --turn-screen-off"
 if /i "!NO_CONTROL!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-control"
 if /i "!RECORD_SCREEN!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --record !RECORD_FILENAME!"
+if /i "!MIRROR_CAMERA!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --video-source=camera --camera-facing=!CAMERA_FACING!"
+if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=--otg"
+if "!WINDOW_OPTIONS!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top"
+if "!WINDOW_OPTIONS!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --window-borderless"
+if "!WINDOW_OPTIONS!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top --window-borderless"
+if /i not "!FORWARD_AUDIO!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-audio"
+if /i "!ADVANCED_KEYBOARD!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --keyboard=uhid"
 
 call :NOTE "Command: scrcpy !SCRCPY_ARGS!"
 call :PRINT_SEP
@@ -461,6 +504,29 @@ call :OK "Pairing successful!"
 
 :WD_CONNECT
 echo.
+set /p "DO_MDNS=  Auto-detect phone IP on this WiFi network? [y/n] (default: y): "
+if "!DO_MDNS!"=="" set "DO_MDNS=y"
+
+if /i "!DO_MDNS!"=="y" (
+    call :NOTE "Scanning for Wireless Debugging devices..."
+    set "MDNS_FOUND="
+    for /f "tokens=1,2,3" %%A in ('"%ADB_EXE%" mdns services 2^>nul ^| findstr "adb-tls-connect"') do (
+        set "MDNS_FOUND=%%C"
+    )
+    if defined MDNS_FOUND (
+        call :OK "Device found: !MDNS_FOUND!"
+        set "LAST_IP_FULL=!MDNS_FOUND!"
+        for /f "tokens=1,2 delims=:" %%X in ("!LAST_IP_FULL!") do (
+            set "LAST_IP=%%X"
+            set "LAST_PORT=%%Y"
+        )
+        goto :CONNECT_NOW
+    ) else (
+        call :WARN "No auto-detected device, please enter manually."
+    )
+)
+
+echo.
 call :NOTE "On phone: note the IP address and Port in the Wireless Debugging menu"
 set "LAST_IP="
 set /p "LAST_IP=  Enter phone IP: "
@@ -472,6 +538,7 @@ if "!LAST_IP!"=="" (
 )
 if "!LAST_PORT!"=="" set "LAST_PORT=5555"
 
+:CONNECT_NOW
 call :NOTE "Connecting to !LAST_IP!:!LAST_PORT!..."
 "%ADB_EXE%" connect "!LAST_IP!:!LAST_PORT!"
 timeout /t 3 /nobreak >nul
@@ -627,6 +694,24 @@ goto :MAIN_MENU
 :: INSTALL MENU
 :: ============================================================
 
+:AUTO_INSTALL
+call :PRINT_BANNER
+echo.
+echo   %ESC%[35m  === AUTO INSTALL SCRCPY v!SCRCPY_DOWNLOAD_VER! ===%ESC%[0m
+echo.
+call :NOTE "Downloading scrcpy v!SCRCPY_DOWNLOAD_VER! (64-bit)... (Might take a few minutes)"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/Genymobile/scrcpy/releases/download/v!SCRCPY_DOWNLOAD_VER!/scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!.zip' -OutFile '%TEMP%\scrcpy-win64.zip' -UseBasicParsing"
+call :NOTE "Extracting to C:\scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!..."
+powershell -Command "Expand-Archive -Path '%TEMP%\scrcpy-win64.zip' -DestinationPath 'C:\' -Force"
+call :OK "Installation complete!"
+set "SCRCPY_PATH=C:\scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!\scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!"
+set "SCRCPY_EXE=!SCRCPY_PATH!\scrcpy.exe"
+set "ADB_EXE=!SCRCPY_PATH!\adb.exe"
+call :ADD_TO_PATH "!SCRCPY_PATH!"
+call :OK "Press Enter to connect your device..."
+pause
+goto :CHECK_DEVICE
+
 :INSTALL_MENU
 call :PRINT_BANNER
 echo.
@@ -641,8 +726,10 @@ echo     1. Download ^& Install scrcpy v!SCRCPY_DOWNLOAD_VER! (64-bit) - RECOMME
 echo     2. Download ^& Install scrcpy v!SCRCPY_DOWNLOAD_VER! (32-bit)
 echo     3. Download ^& Install VLC (64-bit) - for audio
 echo     4. Download ^& Install VLC (32-bit)
-echo     5. Download sndcpy (audio mirroring)
+echo     5. Download sndcpy (Only if scrcpy audio fails on Android 10 or below)
 echo     6. Back to Main Menu
+echo.
+call :NOTE "*Try normal mirroring first. If there's no sound, then install sndcpy (option 5)."
 echo.
 set /p "inst_choice=  Choice [1-6]: "
 if "!inst_choice!"=="1" goto :INSTALL_SCRCPY64

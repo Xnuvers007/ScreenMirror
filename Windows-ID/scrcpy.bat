@@ -165,7 +165,14 @@ if defined ADB_EXE (
     "%ADB_EXE%" devices
 ) else (
     call :ERR "ADB tidak ditemukan! Silakan install scrcpy terlebih dahulu."
-    goto :INSTALL_MENU
+    echo.
+    set /p "DO_AUTO=  Apakah Anda ingin mengunduh dan menginstallnya sekarang secara otomatis? [y/n] (default: y): "
+    if "!DO_AUTO!"=="" set "DO_AUTO=y"
+    if /i "!DO_AUTO!"=="y" (
+        goto :AUTO_INSTALL
+    ) else (
+        goto :INSTALL_MENU
+    )
 )
 
 echo.
@@ -289,18 +296,47 @@ goto :eof
 echo.
 echo   %ESC%[35m  === FITUR TAMBAHAN ===%ESC%[0m
 echo.
-set /p "STAY_AWAKE=  Biarkan layar HP tetap menyala (Stay Awake)? [y/n] (default: y): "
-if "!STAY_AWAKE!"=="" set "STAY_AWAKE=y"
+set /p "MIRROR_CAMERA=  Gunakan kamera HP sebagai tampilan (Camera Mirroring)? [y/n] (default: n): "
+if "!MIRROR_CAMERA!"=="" set "MIRROR_CAMERA=n"
+if /i "!MIRROR_CAMERA!"=="y" (
+    set /p "CAMERA_FACING=  Pilih kamera [front/back/external] (default: back): "
+    if "!CAMERA_FACING!"=="" set "CAMERA_FACING=back"
+)
 
 echo.
-call :NOTE "Matikan Layar: Layar HP mati tapi mirroring tetap berjalan di laptop"
-set /p "TURN_SCREEN_OFF=  Matikan layar HP? [y/n] (default: n): "
-if "!TURN_SCREEN_OFF!"=="" set "TURN_SCREEN_OFF=n"
+call :NOTE "Mode OTG: Bypass blokir layar (game/bank). Harus pakai kabel USB, layar HP tidak tampil."
+set /p "ENABLE_OTG=  Aktifkan Mode OTG? [y/n] (default: n): "
+if "!ENABLE_OTG!"=="" set "ENABLE_OTG=n"
 
-echo.
-call :NOTE "No Control: Hanya melihat, tidak bisa mengontrol HP dari laptop (aman untuk presentasi)"
-set /p "NO_CONTROL=  Aktifkan mode No Control? [y/n] (default: n): "
-if "!NO_CONTROL!"=="" set "NO_CONTROL=n"
+if /i not "!ENABLE_OTG!"=="y" (
+    call :NOTE "Tampilan Jendela: Always on Top (selalu di atas) / Borderless (tanpa bingkai)"
+    set /p "WINDOW_OPTIONS=  Pilih: [1] Normal [2] Always on Top [3] Borderless [4] Top & Borderless (default: 1): "
+    if "!WINDOW_OPTIONS!"=="" set "WINDOW_OPTIONS=1"
+
+    echo.
+    call :NOTE "Kontrol Suara: Scrcpy v4 meneruskan suara otomatis (Android 11+)."
+    set /p "FORWARD_AUDIO=  Teruskan suara HP ke laptop? [y/n] (default: y): "
+    if "!FORWARD_AUDIO!"=="" set "FORWARD_AUDIO=y"
+    
+    echo.
+    call :NOTE "Mode Keyboard: 'uhid' mensimulasikan keyboard fisik 100% akurat tanpa delay."
+    set /p "ADVANCED_KEYBOARD=  Gunakan mode keyboard fisik (uhid)? [y/n] (default: n): "
+    if "!ADVANCED_KEYBOARD!"=="" set "ADVANCED_KEYBOARD=n"
+
+    echo.
+    set /p "STAY_AWAKE=  Biarkan layar HP tetap menyala (Stay Awake)? [y/n] (default: y): "
+    if "!STAY_AWAKE!"=="" set "STAY_AWAKE=y"
+
+    echo.
+    call :NOTE "Matikan Layar: Layar HP mati tapi mirroring tetap berjalan di laptop"
+    set /p "TURN_SCREEN_OFF=  Matikan layar HP? [y/n] (default: n): "
+    if "!TURN_SCREEN_OFF!"=="" set "TURN_SCREEN_OFF=n"
+
+    echo.
+    call :NOTE "No Control: Hanya melihat, tidak bisa mengontrol HP dari laptop (aman untuk presentasi)"
+    set /p "NO_CONTROL=  Aktifkan mode No Control? [y/n] (default: n): "
+    if "!NO_CONTROL!"=="" set "NO_CONTROL=n"
+)
 
 echo.
 set /p "RECORD_SCREEN=  Rekam layar ke video? [y/n] (default: n): "
@@ -328,6 +364,13 @@ if /i "!STAY_AWAKE!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --stay-awake"
 if /i "!TURN_SCREEN_OFF!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --turn-screen-off"
 if /i "!NO_CONTROL!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-control"
 if /i "!RECORD_SCREEN!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --record !RECORD_FILENAME!"
+if /i "!MIRROR_CAMERA!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --video-source=camera --camera-facing=!CAMERA_FACING!"
+if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=--otg"
+if "!WINDOW_OPTIONS!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top"
+if "!WINDOW_OPTIONS!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --window-borderless"
+if "!WINDOW_OPTIONS!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top --window-borderless"
+if /i not "!FORWARD_AUDIO!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-audio"
+if /i "!ADVANCED_KEYBOARD!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --keyboard=uhid"
 
 call :NOTE "Perintah: scrcpy !SCRCPY_ARGS!"
 call :PRINT_SEP
@@ -461,6 +504,29 @@ call :OK "Pairing berhasil!"
 
 :WD_CONNECT
 echo.
+set /p "DO_MDNS=  Cari IP HP secara otomatis di jaringan WiFi ini? [y/n] (default: y): "
+if "!DO_MDNS!"=="" set "DO_MDNS=y"
+
+if /i "!DO_MDNS!"=="y" (
+    call :NOTE "Mencari perangkat Wireless Debugging..."
+    set "MDNS_FOUND="
+    for /f "tokens=1,2,3" %%A in ('"%ADB_EXE%" mdns services 2^>nul ^| findstr "adb-tls-connect"') do (
+        set "MDNS_FOUND=%%C"
+    )
+    if defined MDNS_FOUND (
+        call :OK "Perangkat ditemukan: !MDNS_FOUND!"
+        set "LAST_IP_FULL=!MDNS_FOUND!"
+        for /f "tokens=1,2 delims=:" %%X in ("!LAST_IP_FULL!") do (
+            set "LAST_IP=%%X"
+            set "LAST_PORT=%%Y"
+        )
+        goto :CONNECT_NOW
+    ) else (
+        call :WARN "Tidak ditemukan perangkat otomatis, silakan masukkan manual."
+    )
+)
+
+echo.
 call :NOTE "Di HP: catat Alamat IP dan Port di menu Wireless Debugging"
 set "LAST_IP="
 set /p "LAST_IP=  Masukkan IP HP: "
@@ -472,6 +538,7 @@ if "!LAST_IP!"=="" (
 )
 if "!LAST_PORT!"=="" set "LAST_PORT=5555"
 
+:CONNECT_NOW
 call :NOTE "Menghubungkan ke !LAST_IP!:!LAST_PORT!..."
 "%ADB_EXE%" connect "!LAST_IP!:!LAST_PORT!"
 timeout /t 3 /nobreak >nul
@@ -628,6 +695,24 @@ goto :MAIN_MENU
 :: INSTALL MENU
 :: ============================================================
 
+:AUTO_INSTALL
+call :PRINT_BANNER
+echo.
+echo   %ESC%[35m  === AUTO INSTALL SCRCPY v!SCRCPY_DOWNLOAD_VER! ===%ESC%[0m
+echo.
+call :NOTE "Mengunduh scrcpy v!SCRCPY_DOWNLOAD_VER! (64-bit)... (Mungkin butuh beberapa menit)"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/Genymobile/scrcpy/releases/download/v!SCRCPY_DOWNLOAD_VER!/scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!.zip' -OutFile '%TEMP%\scrcpy-win64.zip' -UseBasicParsing"
+call :NOTE "Mengekstrak ke C:\scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!..."
+powershell -Command "Expand-Archive -Path '%TEMP%\scrcpy-win64.zip' -DestinationPath 'C:\' -Force"
+call :OK "Instalasi selesai!"
+set "SCRCPY_PATH=C:\scrcpy-win64-v!SCRCPY_DOWNLOAD_VER!"
+set "SCRCPY_EXE=!SCRCPY_PATH!\scrcpy.exe"
+set "ADB_EXE=!SCRCPY_PATH!\adb.exe"
+call :ADD_TO_PATH "!SCRCPY_PATH!"
+call :OK "Tekan Enter untuk menghubungkan perangkat..."
+pause
+goto :CHECK_DEVICE
+
 :INSTALL_MENU
 call :PRINT_BANNER
 echo.
@@ -642,8 +727,10 @@ echo     1. Download ^& Install scrcpy v!SCRCPY_DOWNLOAD_VER! (64-bit) - DIREKOM
 echo     2. Download ^& Install scrcpy v!SCRCPY_DOWNLOAD_VER! (32-bit)
 echo     3. Download ^& Install VLC (64-bit) - untuk audio
 echo     4. Download ^& Install VLC (32-bit)
-echo     5. Download sndcpy (audio mirroring)
+echo     5. Download sndcpy (Hanya jika suara scrcpy tidak keluar di Android 10 ke bawah)
 echo     6. Kembali ke Menu Utama
+echo.
+call :NOTE "*Coba jalankan mirroring biasa dulu. Jika tidak ada suara, baru install sndcpy (opsi 5)."
 echo.
 set /p "inst_choice=  Pilihan [1-6]: "
 if "!inst_choice!"=="1" goto :INSTALL_SCRCPY64
