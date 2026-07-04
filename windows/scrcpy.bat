@@ -156,6 +156,7 @@ set "USB_CODEC=h264"
 set "USB_STAY_AWAKE=y"
 set "USB_NO_CONTROL=n"
 set "USB_TURN_SCREEN_OFF=n"
+set "USB_AUDIO_MODE=1"
 :: WiFi defaults
 set "WIFI_IP="
 set "WIFI_PORT=5555"
@@ -166,6 +167,7 @@ set "WIFI_CODEC=h264"
 set "WIFI_STAY_AWAKE=y"
 set "WIFI_NO_CONTROL=n"
 set "WIFI_TURN_SCREEN_OFF=n"
+set "WIFI_AUDIO_MODE=1"
 :: Wireless Debug defaults
 set "WD_IP="
 set "WD_PORT=5555"
@@ -176,6 +178,7 @@ set "WD_CODEC=h264"
 set "WD_STAY_AWAKE=y"
 set "WD_NO_CONTROL=n"
 set "WD_TURN_SCREEN_OFF=n"
+set "WD_AUDIO_MODE=1"
 
 if exist "%CONFIG_FILE%" (
     :: Check if old format (has LAST_IP= but no USB_FPS=)
@@ -245,6 +248,7 @@ if "%~1"=="USB" (
     set "STAY_AWAKE=!USB_STAY_AWAKE!"
     set "NO_CONTROL=!USB_NO_CONTROL!"
     set "TURN_SCREEN_OFF=!USB_TURN_SCREEN_OFF!"
+    set "AUDIO_MODE=!USB_AUDIO_MODE!"
 )
 if "%~1"=="WIFI" (
     set "LAST_IP=!WIFI_IP!"
@@ -256,6 +260,7 @@ if "%~1"=="WIFI" (
     set "STAY_AWAKE=!WIFI_STAY_AWAKE!"
     set "NO_CONTROL=!WIFI_NO_CONTROL!"
     set "TURN_SCREEN_OFF=!WIFI_TURN_SCREEN_OFF!"
+    set "AUDIO_MODE=!WIFI_AUDIO_MODE!"
 )
 if "%~1"=="WD" (
     set "LAST_IP=!WD_IP!"
@@ -267,6 +272,7 @@ if "%~1"=="WD" (
     set "STAY_AWAKE=!WD_STAY_AWAKE!"
     set "NO_CONTROL=!WD_NO_CONTROL!"
     set "TURN_SCREEN_OFF=!WD_TURN_SCREEN_OFF!"
+    set "AUDIO_MODE=!WD_AUDIO_MODE!"
 )
 goto :eof
 
@@ -280,6 +286,7 @@ if "%~1"=="USB" (
     set "USB_STAY_AWAKE=!STAY_AWAKE!"
     set "USB_NO_CONTROL=!NO_CONTROL!"
     set "USB_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+    set "USB_AUDIO_MODE=!AUDIO_MODE!"
 )
 if "%~1"=="WIFI" (
     set "WIFI_IP=!LAST_IP!"
@@ -291,6 +298,7 @@ if "%~1"=="WIFI" (
     set "WIFI_STAY_AWAKE=!STAY_AWAKE!"
     set "WIFI_NO_CONTROL=!NO_CONTROL!"
     set "WIFI_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+    set "WIFI_AUDIO_MODE=!AUDIO_MODE!"
 )
 if "%~1"=="WD" (
     set "WD_IP=!LAST_IP!"
@@ -302,6 +310,7 @@ if "%~1"=="WD" (
     set "WD_STAY_AWAKE=!STAY_AWAKE!"
     set "WD_NO_CONTROL=!NO_CONTROL!"
     set "WD_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+    set "WD_AUDIO_MODE=!AUDIO_MODE!"
 )
 goto :eof
 
@@ -339,12 +348,18 @@ for /f "skip=1 tokens=1,2" %%a in ('"%ADB_EXE%" devices 2^>nul') do (
         call :OK "Device detected: %%a"
 
         for /f "tokens=*" %%m in ('"%ADB_EXE%" -s %%a shell getprop ro.product.model 2^>nul') do set "DEVICE_MODEL=%%m"
+        for /f "tokens=*" %%b in ('"%ADB_EXE%" -s %%a shell getprop ro.product.brand 2^>nul') do set "DEVICE_BRAND=%%b"
         for /f "tokens=*" %%s in ('"%ADB_EXE%" -s %%a shell getprop ro.build.version.sdk 2^>nul') do set "DEVICE_SDK=%%s"
         for /f "tokens=*" %%v in ('"%ADB_EXE%" -s %%a shell getprop ro.build.version.release 2^>nul') do set "DEVICE_VER=%%v"
+        for /f "tokens=*" %%p in ('"%ADB_EXE%" -s %%a shell getprop ro.board.platform 2^>nul') do set "DEVICE_PLATFORM=%%p"
+        for /f "tokens=*" %%c in ('"%ADB_EXE%" -s %%a shell getprop ro.product.cpu.abi 2^>nul') do set "DEVICE_ABI=%%c"
 
         call :PRINT_SEP
+        call :NOTE "Brand   : !DEVICE_BRAND!"
         call :NOTE "Model   : !DEVICE_MODEL!"
         call :NOTE "Android : !DEVICE_VER! (API !DEVICE_SDK!)"
+        call :NOTE "Platform: !DEVICE_PLATFORM!"
+        call :NOTE "CPU ABI : !DEVICE_ABI!"
         call :NOTE "DeviceID: %%a"
         call :PRINT_SEP
 
@@ -457,7 +472,7 @@ set "MIRROR_CAMERA="
 set "CAMERA_FACING="
 set "ENABLE_OTG="
 set "WINDOW_OPTIONS="
-set "FORWARD_AUDIO="
+set "AUDIO_MODE="
 set "ADVANCED_KEYBOARD="
 set "STAY_AWAKE="
 set "TURN_SCREEN_OFF="
@@ -481,13 +496,16 @@ if /i not "!ENABLE_OTG!"=="y" (
     set /p "WINDOW_OPTIONS=  Choose: [1] Normal [2] Always on Top [3] Borderless [4] Top & Borderless (default: 1): "
     if "!WINDOW_OPTIONS!"=="" set "WINDOW_OPTIONS=1"
 
-    echo.
-    call :NOTE "Audio Control: Scrcpy v4 forwards audio automatically (Android 11+)."
-    set /p "FORWARD_AUDIO=  Forward phone audio to laptop? [y/n] (default: y): "
-    if "!FORWARD_AUDIO!"=="" set "FORWARD_AUDIO=y"
+    call :NOTE "Audio Settings (Android 11+):"
+    echo     1. Audio on Laptop only (Default)
+    echo     2. Audio on Phone and Laptop (Audio Duplication)
+    echo     3. Audio on Phone only (Disable forwarding)
+    echo     4. Forward Phone Microphone to Laptop
+    set /p "AUDIO_MODE=  Select audio mode [1-4] (default: 1): "
+    if "!AUDIO_MODE!"=="" set "AUDIO_MODE=1"
     
     echo.
-    call :NOTE "Keyboard Mode: 'uhid' simulates a physical keyboard 100% accurately without delay."
+    call :NOTE "Keyboard Mode: 'uhid' simulates physical keyboard with 100%% accuracy."
     set /p "ADVANCED_KEYBOARD=  Use physical keyboard mode (uhid)? [y/n] (default: n): "
     if "!ADVANCED_KEYBOARD!"=="" set "ADVANCED_KEYBOARD=n"
 
@@ -541,7 +559,9 @@ if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --otg"
 if "!WINDOW_OPTIONS!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top"
 if "!WINDOW_OPTIONS!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --window-borderless"
 if "!WINDOW_OPTIONS!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top --window-borderless"
-if /i not "!FORWARD_AUDIO!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-audio"
+if "!AUDIO_MODE!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --audio-source=playback --audio-dup"
+if "!AUDIO_MODE!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-audio"
+if "!AUDIO_MODE!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --audio-source=mic"
 if /i "!ADVANCED_KEYBOARD!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --keyboard=uhid"
 
 call :NOTE "Command: scrcpy !SCRCPY_ARGS!"

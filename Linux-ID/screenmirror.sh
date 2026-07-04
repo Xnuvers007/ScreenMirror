@@ -103,17 +103,17 @@ muat_config() {
 
     # USB defaults
     USB_FPS="60"; USB_BITRATE="8M"; USB_RESOLUTION="1080"; USB_CODEC="h264"
-    USB_STAY_AWAKE="y"; USB_NO_CONTROL="n"; USB_TURN_SCREEN_OFF="n"
+    USB_STAY_AWAKE="y"; USB_NO_CONTROL="n"; USB_TURN_SCREEN_OFF="n"; USB_AUDIO_MODE="1"
 
     # WiFi defaults
     WIFI_IP=""; WIFI_PORT="5555"
     WIFI_FPS="60"; WIFI_BITRATE="8M"; WIFI_RESOLUTION="1080"; WIFI_CODEC="h264"
-    WIFI_STAY_AWAKE="y"; WIFI_NO_CONTROL="n"; WIFI_TURN_SCREEN_OFF="n"
+    WIFI_STAY_AWAKE="y"; WIFI_NO_CONTROL="n"; WIFI_TURN_SCREEN_OFF="n"; WIFI_AUDIO_MODE="1"
 
     # Wireless Debug defaults
     WD_IP=""; WD_PORT="5555"
     WD_FPS="60"; WD_BITRATE="8M"; WD_RESOLUTION="1080"; WD_CODEC="h264"
-    WD_STAY_AWAKE="y"; WD_NO_CONTROL="n"; WD_TURN_SCREEN_OFF="n"
+    WD_STAY_AWAKE="y"; WD_NO_CONTROL="n"; WD_TURN_SCREEN_OFF="n"; WD_AUDIO_MODE="1"
 
     if [ -f "$CONFIG_FILE" ]; then
         # Backward compatibility: cek format lama
@@ -155,21 +155,21 @@ muat_config_mode() {
             LAST_FPS="$USB_FPS"; LAST_BITRATE="$USB_BITRATE"
             LAST_RESOLUTION="$USB_RESOLUTION"; LAST_CODEC="$USB_CODEC"
             STAY_AWAKE="$USB_STAY_AWAKE"; NO_CONTROL="$USB_NO_CONTROL"
-            TURN_SCREEN_OFF="$USB_TURN_SCREEN_OFF"
+            TURN_SCREEN_OFF="$USB_TURN_SCREEN_OFF"; AUDIO_MODE="$USB_AUDIO_MODE"
             ;;
         WIFI)
             LAST_IP="$WIFI_IP"; LAST_PORT="$WIFI_PORT"
             LAST_FPS="$WIFI_FPS"; LAST_BITRATE="$WIFI_BITRATE"
             LAST_RESOLUTION="$WIFI_RESOLUTION"; LAST_CODEC="$WIFI_CODEC"
             STAY_AWAKE="$WIFI_STAY_AWAKE"; NO_CONTROL="$WIFI_NO_CONTROL"
-            TURN_SCREEN_OFF="$WIFI_TURN_SCREEN_OFF"
+            TURN_SCREEN_OFF="$WIFI_TURN_SCREEN_OFF"; AUDIO_MODE="$WIFI_AUDIO_MODE"
             ;;
         WD)
             LAST_IP="$WD_IP"; LAST_PORT="$WD_PORT"
             LAST_FPS="$WD_FPS"; LAST_BITRATE="$WD_BITRATE"
             LAST_RESOLUTION="$WD_RESOLUTION"; LAST_CODEC="$WD_CODEC"
             STAY_AWAKE="$WD_STAY_AWAKE"; NO_CONTROL="$WD_NO_CONTROL"
-            TURN_SCREEN_OFF="$WD_TURN_SCREEN_OFF"
+            TURN_SCREEN_OFF="$WD_TURN_SCREEN_OFF"; AUDIO_MODE="$WD_AUDIO_MODE"
             ;;
     esac
 }
@@ -182,21 +182,21 @@ simpan_config_mode() {
             USB_FPS="$LAST_FPS"; USB_BITRATE="$LAST_BITRATE"
             USB_RESOLUTION="$LAST_RESOLUTION"; USB_CODEC="$LAST_CODEC"
             USB_STAY_AWAKE="$STAY_AWAKE"; USB_NO_CONTROL="$NO_CONTROL"
-            USB_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            USB_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"; USB_AUDIO_MODE="$AUDIO_MODE"
             ;;
         WIFI)
             WIFI_IP="$LAST_IP"; WIFI_PORT="$LAST_PORT"
             WIFI_FPS="$LAST_FPS"; WIFI_BITRATE="$LAST_BITRATE"
             WIFI_RESOLUTION="$LAST_RESOLUTION"; WIFI_CODEC="$LAST_CODEC"
             WIFI_STAY_AWAKE="$STAY_AWAKE"; WIFI_NO_CONTROL="$NO_CONTROL"
-            WIFI_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            WIFI_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"; WIFI_AUDIO_MODE="$AUDIO_MODE"
             ;;
         WD)
             WD_IP="$LAST_IP"; WD_PORT="$LAST_PORT"
             WD_FPS="$LAST_FPS"; WD_BITRATE="$LAST_BITRATE"
             WD_RESOLUTION="$LAST_RESOLUTION"; WD_CODEC="$LAST_CODEC"
             WD_STAY_AWAKE="$STAY_AWAKE"; WD_NO_CONTROL="$NO_CONTROL"
-            WD_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            WD_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"; WD_AUDIO_MODE="$AUDIO_MODE"
             ;;
     esac
 }
@@ -303,15 +303,21 @@ cek_perangkat() {
     local device_id
     device_id=$(echo "$devices" | head -1)
 
-    local model serial sdk
+    local model serial sdk android_ver brand platform abi
     model=$(adb -s "$device_id" shell getprop ro.product.model 2>/dev/null | tr -d '\r')
+    brand=$(adb -s "$device_id" shell getprop ro.product.brand 2>/dev/null | tr -d '\r')
     serial=$(adb -s "$device_id" shell getprop ro.serialno 2>/dev/null | tr -d '\r')
     sdk=$(adb -s "$device_id" shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
     android_ver=$(adb -s "$device_id" shell getprop ro.build.version.release 2>/dev/null | tr -d '\r')
+    platform=$(adb -s "$device_id" shell getprop ro.board.platform 2>/dev/null | tr -d '\r')
+    abi=$(adb -s "$device_id" shell getprop ro.product.cpu.abi 2>/dev/null | tr -d '\r')
 
+    note "Brand       : ${brand:-Tidak diketahui}"
     note "Model       : ${model:-Tidak diketahui}"
     note "Serial      : ${serial:-Tidak diketahui}"
     note "Android SDK : API $sdk (Android $android_ver)"
+    note "Platform    : ${platform:-Tidak diketahui}"
+    note "CPU ABI     : ${abi:-Tidak diketahui}"
     note "Device ID   : $device_id"
 
     separator
@@ -633,9 +639,13 @@ atur_fitur_tambahan() {
 
         echo ""
         # Audio Control
-        echo -e "${CYAN}  Kontrol Suara (Scrcpy v4 meneruskan suara otomatis):${RESET}"
-        read -rp "$(echo -e "${YELLOW}  Teruskan suara HP ke laptop? [y/n] (default: y): ${RESET}")" FORWARD_AUDIO
-        FORWARD_AUDIO="${FORWARD_AUDIO:-y}"
+        echo -e "${CYAN}  Pengaturan Audio (Android 11+):${RESET}"
+        echo "    1. Suara hanya di Laptop (Default)"
+        echo "    2. Suara di HP dan Laptop (Audio Duplication)"
+        echo "    3. Suara hanya di HP (Matikan forwarding)"
+        echo "    4. Teruskan Mikrofon HP ke Laptop"
+        read -rp "$(echo -e "${YELLOW}  Pilih mode audio [1-4] (default: 1): ${RESET}")" AUDIO_MODE
+        AUDIO_MODE="${AUDIO_MODE:-1}"
 
         echo ""
         # Advanced Keyboard
@@ -741,7 +751,9 @@ bangun_perintah_scrcpy() {
     if [ "$WINDOW_OPTIONS" = "4" ]; then args+=("--always-on-top" "--window-borderless"); fi
 
     # Audio Control
-    if [[ ! "$FORWARD_AUDIO" =~ ^[Yy]$ ]]; then args+=("--no-audio"); fi
+    if [ "$AUDIO_MODE" = "2" ]; then args+=("--audio-source=playback" "--audio-dup"); fi
+    if [ "$AUDIO_MODE" = "3" ]; then args+=("--no-audio"); fi
+    if [ "$AUDIO_MODE" = "4" ]; then args+=("--audio-source=mic"); fi
 
     # Advanced Keyboard
     if [[ "$ADVANCED_KEYBOARD" =~ ^[Yy]$ ]]; then args+=("--keyboard=uhid"); fi
