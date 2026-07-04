@@ -54,7 +54,7 @@ tekan_enter() {
 }
 
 # ============================================================
-# SIMPAN & MUAT KONFIGURASI
+# SIMPAN & MUAT KONFIGURASI (Per-Mode: USB / WiFi / Wireless Debug)
 # ============================================================
 
 simpan_config() {
@@ -62,51 +62,182 @@ simpan_config() {
 # ScreenMirror Configuration - Disimpan otomatis
 # Terakhir diperbarui: $(date)
 LAST_CONNECTION="$LAST_CONNECTION"
-LAST_IP="$LAST_IP"
-LAST_PORT="$LAST_PORT"
-LAST_FPS="$LAST_FPS"
-LAST_BITRATE="$LAST_BITRATE"
-LAST_RESOLUTION="$LAST_RESOLUTION"
-LAST_CODEC="$LAST_CODEC"
-STAY_AWAKE="$STAY_AWAKE"
-NO_CONTROL="$NO_CONTROL"
-TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+
+# --- USB Config ---
+USB_FPS="$USB_FPS"
+USB_BITRATE="$USB_BITRATE"
+USB_RESOLUTION="$USB_RESOLUTION"
+USB_CODEC="$USB_CODEC"
+USB_STAY_AWAKE="$USB_STAY_AWAKE"
+USB_NO_CONTROL="$USB_NO_CONTROL"
+USB_TURN_SCREEN_OFF="$USB_TURN_SCREEN_OFF"
+
+# --- WiFi TCP/IP Config ---
+WIFI_IP="$WIFI_IP"
+WIFI_PORT="$WIFI_PORT"
+WIFI_FPS="$WIFI_FPS"
+WIFI_BITRATE="$WIFI_BITRATE"
+WIFI_RESOLUTION="$WIFI_RESOLUTION"
+WIFI_CODEC="$WIFI_CODEC"
+WIFI_STAY_AWAKE="$WIFI_STAY_AWAKE"
+WIFI_NO_CONTROL="$WIFI_NO_CONTROL"
+WIFI_TURN_SCREEN_OFF="$WIFI_TURN_SCREEN_OFF"
+
+# --- Wireless Debug Config ---
+WD_IP="$WD_IP"
+WD_PORT="$WD_PORT"
+WD_FPS="$WD_FPS"
+WD_BITRATE="$WD_BITRATE"
+WD_RESOLUTION="$WD_RESOLUTION"
+WD_CODEC="$WD_CODEC"
+WD_STAY_AWAKE="$WD_STAY_AWAKE"
+WD_NO_CONTROL="$WD_NO_CONTROL"
+WD_TURN_SCREEN_OFF="$WD_TURN_SCREEN_OFF"
 EOF
     info "Konfigurasi berhasil disimpan ke: $CONFIG_FILE"
 }
 
 muat_config() {
-    # Nilai default
+    # Nilai default semua mode
     LAST_CONNECTION="1"
-    LAST_IP=""
-    LAST_PORT="5555"
-    LAST_FPS="60"
-    LAST_BITRATE="8M"
-    LAST_RESOLUTION="1080"
-    LAST_CODEC="h264"
-    STAY_AWAKE="y"
-    NO_CONTROL="n"
-    TURN_SCREEN_OFF="n"
+
+    # USB defaults
+    USB_FPS="60"; USB_BITRATE="8M"; USB_RESOLUTION="1080"; USB_CODEC="h264"
+    USB_STAY_AWAKE="y"; USB_NO_CONTROL="n"; USB_TURN_SCREEN_OFF="n"
+
+    # WiFi defaults
+    WIFI_IP=""; WIFI_PORT="5555"
+    WIFI_FPS="60"; WIFI_BITRATE="8M"; WIFI_RESOLUTION="1080"; WIFI_CODEC="h264"
+    WIFI_STAY_AWAKE="y"; WIFI_NO_CONTROL="n"; WIFI_TURN_SCREEN_OFF="n"
+
+    # Wireless Debug defaults
+    WD_IP=""; WD_PORT="5555"
+    WD_FPS="60"; WD_BITRATE="8M"; WD_RESOLUTION="1080"; WD_CODEC="h264"
+    WD_STAY_AWAKE="y"; WD_NO_CONTROL="n"; WD_TURN_SCREEN_OFF="n"
 
     if [ -f "$CONFIG_FILE" ]; then
-        # shellcheck source=/dev/null
-        source "$CONFIG_FILE"
-        info "Konfigurasi terakhir dimuat dari: $CONFIG_FILE"
+        # Backward compatibility: cek format lama
+        if grep -q "^LAST_IP=" "$CONFIG_FILE" && ! grep -q "^USB_FPS=" "$CONFIG_FILE"; then
+            # shellcheck source=/dev/null
+            source "$CONFIG_FILE"
+            USB_FPS="${LAST_FPS:-60}"; USB_BITRATE="${LAST_BITRATE:-8M}"
+            USB_RESOLUTION="${LAST_RESOLUTION:-1080}"; USB_CODEC="${LAST_CODEC:-h264}"
+            USB_STAY_AWAKE="${STAY_AWAKE:-y}"; USB_NO_CONTROL="${NO_CONTROL:-n}"
+            USB_TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+            if [ "$LAST_CONNECTION" = "2" ]; then
+                WIFI_IP="${LAST_IP:-}"; WIFI_PORT="${LAST_PORT:-5555}"
+                WIFI_FPS="${LAST_FPS:-60}"; WIFI_BITRATE="${LAST_BITRATE:-8M}"
+                WIFI_RESOLUTION="${LAST_RESOLUTION:-1080}"; WIFI_CODEC="${LAST_CODEC:-h264}"
+                WIFI_STAY_AWAKE="${STAY_AWAKE:-y}"; WIFI_NO_CONTROL="${NO_CONTROL:-n}"
+                WIFI_TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+            elif [ "$LAST_CONNECTION" = "3" ]; then
+                WD_IP="${LAST_IP:-}"; WD_PORT="${LAST_PORT:-5555}"
+                WD_FPS="${LAST_FPS:-60}"; WD_BITRATE="${LAST_BITRATE:-8M}"
+                WD_RESOLUTION="${LAST_RESOLUTION:-1080}"; WD_CODEC="${LAST_CODEC:-h264}"
+                WD_STAY_AWAKE="${STAY_AWAKE:-y}"; WD_NO_CONTROL="${NO_CONTROL:-n}"
+                WD_TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+            fi
+            info "Konfigurasi lama berhasil dimigrasi ke format per-mode."
+            simpan_config
+        else
+            # shellcheck source=/dev/null
+            source "$CONFIG_FILE"
+        fi
+        info "Konfigurasi dimuat dari: $CONFIG_FILE"
+    fi
+}
+
+# Muat config mode tertentu ke variabel kerja LAST_*
+muat_config_mode() {
+    local mode="$1"
+    case "$mode" in
+        USB)
+            LAST_FPS="$USB_FPS"; LAST_BITRATE="$USB_BITRATE"
+            LAST_RESOLUTION="$USB_RESOLUTION"; LAST_CODEC="$USB_CODEC"
+            STAY_AWAKE="$USB_STAY_AWAKE"; NO_CONTROL="$USB_NO_CONTROL"
+            TURN_SCREEN_OFF="$USB_TURN_SCREEN_OFF"
+            ;;
+        WIFI)
+            LAST_IP="$WIFI_IP"; LAST_PORT="$WIFI_PORT"
+            LAST_FPS="$WIFI_FPS"; LAST_BITRATE="$WIFI_BITRATE"
+            LAST_RESOLUTION="$WIFI_RESOLUTION"; LAST_CODEC="$WIFI_CODEC"
+            STAY_AWAKE="$WIFI_STAY_AWAKE"; NO_CONTROL="$WIFI_NO_CONTROL"
+            TURN_SCREEN_OFF="$WIFI_TURN_SCREEN_OFF"
+            ;;
+        WD)
+            LAST_IP="$WD_IP"; LAST_PORT="$WD_PORT"
+            LAST_FPS="$WD_FPS"; LAST_BITRATE="$WD_BITRATE"
+            LAST_RESOLUTION="$WD_RESOLUTION"; LAST_CODEC="$WD_CODEC"
+            STAY_AWAKE="$WD_STAY_AWAKE"; NO_CONTROL="$WD_NO_CONTROL"
+            TURN_SCREEN_OFF="$WD_TURN_SCREEN_OFF"
+            ;;
+    esac
+}
+
+# Simpan variabel kerja LAST_* kembali ke variabel mode
+simpan_config_mode() {
+    local mode="$1"
+    case "$mode" in
+        USB)
+            USB_FPS="$LAST_FPS"; USB_BITRATE="$LAST_BITRATE"
+            USB_RESOLUTION="$LAST_RESOLUTION"; USB_CODEC="$LAST_CODEC"
+            USB_STAY_AWAKE="$STAY_AWAKE"; USB_NO_CONTROL="$NO_CONTROL"
+            USB_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            ;;
+        WIFI)
+            WIFI_IP="$LAST_IP"; WIFI_PORT="$LAST_PORT"
+            WIFI_FPS="$LAST_FPS"; WIFI_BITRATE="$LAST_BITRATE"
+            WIFI_RESOLUTION="$LAST_RESOLUTION"; WIFI_CODEC="$LAST_CODEC"
+            WIFI_STAY_AWAKE="$STAY_AWAKE"; WIFI_NO_CONTROL="$NO_CONTROL"
+            WIFI_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            ;;
+        WD)
+            WD_IP="$LAST_IP"; WD_PORT="$LAST_PORT"
+            WD_FPS="$LAST_FPS"; WD_BITRATE="$LAST_BITRATE"
+            WD_RESOLUTION="$LAST_RESOLUTION"; WD_CODEC="$LAST_CODEC"
+            WD_STAY_AWAKE="$STAY_AWAKE"; WD_NO_CONTROL="$NO_CONTROL"
+            WD_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            ;;
+    esac
+}
+
+# Tanya user apakah ingin pakai config tersimpan
+tanya_pakai_config_mode() {
+    local mode="$1"
+    local mode_label="$2"
+    local has_config=false
+
+    case "$mode" in
+        USB)   [ -n "$USB_FPS" ] && [ "$USB_FPS" != "" ] && has_config=true ;;
+        WIFI)  [ -n "$WIFI_IP" ] && [ "$WIFI_IP" != "" ] && has_config=true ;;
+        WD)    [ -n "$WD_IP" ] && [ "$WD_IP" != "" ] && has_config=true ;;
+    esac
+
+    if [ -f "$CONFIG_FILE" ] && [ "$has_config" = true ]; then
         separator
-        note "IP Terakhir      : ${LAST_IP:-Belum diset}"
-        note "Port Terakhir    : $LAST_PORT"
-        note "FPS Terakhir     : $LAST_FPS"
-        note "Bitrate Terakhir : $LAST_BITRATE"
-        note "Koneksi Terakhir : $([ "$LAST_CONNECTION" = "1" ] && echo "USB" || ([ "$LAST_CONNECTION" = "2" ] && echo "WiFi/TCP" || echo "Wireless Debug"))"
+        note "Config $mode_label tersimpan:"
+        case "$mode" in
+            USB)
+                note "  FPS: $USB_FPS | Bitrate: $USB_BITRATE | Resolusi: $USB_RESOLUTION | Codec: $USB_CODEC"
+                ;;
+            WIFI)
+                note "  IP: $WIFI_IP | Port: $WIFI_PORT"
+                note "  FPS: $WIFI_FPS | Bitrate: $WIFI_BITRATE | Resolusi: $WIFI_RESOLUTION | Codec: $WIFI_CODEC"
+                ;;
+            WD)
+                note "  IP: $WD_IP | Port: $WD_PORT"
+                note "  FPS: $WD_FPS | Bitrate: $WD_BITRATE | Resolusi: $WD_RESOLUTION | Codec: $WD_CODEC"
+                ;;
+        esac
         separator
         echo ""
-        read -rp "$(echo -e "${YELLOW}  Gunakan konfigurasi terakhir? [y/n] (default: y): ${RESET}")" USE_LAST
-        USE_LAST="${USE_LAST:-y}"
-        if [[ "$USE_LAST" =~ ^[Yy]$ ]]; then
-            return 0  # Gunakan config tersimpan
+        read -rp "$(echo -e "${YELLOW}  Gunakan konfigurasi $mode_label tersimpan? [y/n] (default: y): ${RESET}")" USE_SAVED
+        USE_SAVED="${USE_SAVED:-y}"
+        if [[ "$USE_SAVED" =~ ^[Yy]$ ]]; then
+            return 0
         fi
     fi
-    return 1  # Minta input baru
+    return 1
 }
 
 # ============================================================
@@ -555,6 +686,13 @@ atur_fitur_tambahan() {
 bangun_perintah_scrcpy() {
     local args=()
 
+    # Device selection (menghindari error "Multiple ADB devices")
+    if [ "$LAST_CONNECTION" = "1" ]; then
+        args+=("-d")
+    elif [ "$LAST_CONNECTION" = "2" ] || [ "$LAST_CONNECTION" = "3" ]; then
+        args+=("-s" "${LAST_IP}:${LAST_PORT}")
+    fi
+
     # Video settings
     args+=("--video-codec=$LAST_CODEC")
     args+=("-b" "$LAST_BITRATE")
@@ -627,8 +765,12 @@ koneksi_usb() {
     fi
 
     LAST_CONNECTION="1"
-    atur_scrcpy_options
-    atur_fitur_tambahan
+    muat_config_mode "USB"
+    if ! tanya_pakai_config_mode "USB" "USB"; then
+        atur_scrcpy_options
+        atur_fitur_tambahan
+    fi
+    simpan_config_mode "USB"
     simpan_config
 
     local args
@@ -662,6 +804,7 @@ koneksi_wifi() {
         return 1
     fi
 
+    muat_config_mode "WIFI"
     LAST_PORT="${LAST_PORT:-5555}"
     echo ""
     read -rp "$(echo -e "${YELLOW}  Masukkan port TCP [default: $LAST_PORT]: ${RESET}")" input_port
@@ -676,7 +819,8 @@ koneksi_wifi() {
     note "  Pengaturan > Tentang Ponsel > Status > Alamat IP"
     note "  ATAU Pengaturan > WiFi > (nama WiFi Anda) > Detail"
     echo ""
-    read -rp "$(echo -e "${YELLOW}  Masukkan IP address HP Android Anda: ${RESET}")" LAST_IP
+    read -rp "$(echo -e "${YELLOW}  Masukkan IP address HP Android Anda${LAST_IP:+ [default: $LAST_IP]}: ${RESET}")" input_ip
+    LAST_IP="${input_ip:-$LAST_IP}"
 
     if [ -z "$LAST_IP" ]; then
         error "IP tidak boleh kosong!"
@@ -702,8 +846,11 @@ koneksi_wifi() {
 
     info "Koneksi WiFi berhasil! ✓"
     LAST_CONNECTION="2"
-    atur_scrcpy_options
-    atur_fitur_tambahan
+    if ! tanya_pakai_config_mode "WIFI" "WiFi"; then
+        atur_scrcpy_options
+        atur_fitur_tambahan
+    fi
+    simpan_config_mode "WIFI"
     simpan_config
 
     local args
@@ -730,6 +877,8 @@ koneksi_wireless_debug() {
     warn "Fitur ini membutuhkan Android 11 atau lebih baru!"
     note "Jika HP Anda Android 10 ke bawah, pilih opsi 'Koneksi WiFi' sebagai gantinya."
     echo ""
+
+    muat_config_mode "WD"
 
     echo -e "${CYAN}  Apakah ini pertama kali? (Perlu Pairing)${RESET}"
     read -rp "$(echo -e "${YELLOW}  Lakukan pairing dulu? [y/n] (default: y): ${RESET}")" DO_PAIR
@@ -785,8 +934,10 @@ koneksi_wireless_debug() {
         note "Di HP: Pengaturan > Opsi Pengembang > Wireless Debugging"
         note "Catat Alamat IP dan Port di bagian atas"
         echo ""
-        read -rp "$(echo -e "${YELLOW}  Masukkan IP HP: ${RESET}")" LAST_IP
-        read -rp "$(echo -e "${YELLOW}  Masukkan Port (dari Wireless Debugging): ${RESET}")" LAST_PORT
+        read -rp "$(echo -e "${YELLOW}  Masukkan IP HP${LAST_IP:+ [default: $LAST_IP]}: ${RESET}")" input_ip
+        LAST_IP="${input_ip:-$LAST_IP}"
+        read -rp "$(echo -e "${YELLOW}  Masukkan Port (dari Wireless Debugging)${LAST_PORT:+ [default: $LAST_PORT]}: ${RESET}")" input_port
+        LAST_PORT="${input_port:-$LAST_PORT}"
 
         if [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ]; then
             error "IP dan Port tidak boleh kosong!"
@@ -808,8 +959,11 @@ koneksi_wireless_debug() {
 
     info "Koneksi Wireless Debugging berhasil! ✓"
     LAST_CONNECTION="3"
-    atur_scrcpy_options
-    atur_fitur_tambahan
+    if ! tanya_pakai_config_mode "WD" "Wireless Debug"; then
+        atur_scrcpy_options
+        atur_fitur_tambahan
+    fi
+    simpan_config_mode "WD"
     simpan_config
 
     local args
@@ -913,12 +1067,27 @@ menu_utama() {
             9)
                 title "KONFIGURASI TERSIMPAN"
                 if [ -f "$CONFIG_FILE" ]; then
-                    cat "$CONFIG_FILE"
+                    separator
+                    echo -e "  ${CYAN}  ─── Config USB ──────────────────────────────${RESET}"
+                    note "  FPS: $USB_FPS | Bitrate: $USB_BITRATE | Resolusi: $USB_RESOLUTION | Codec: $USB_CODEC"
+                    note "  Stay Awake: $USB_STAY_AWAKE | No Control: $USB_NO_CONTROL | Layar Mati: $USB_TURN_SCREEN_OFF"
                     echo ""
-                    read -rp "$(echo -e "${YELLOW}  Hapus konfigurasi? [y/n]: ${RESET}")" del_conf
+                    echo -e "  ${CYAN}  ─── Config WiFi ─────────────────────────────${RESET}"
+                    note "  IP: ${WIFI_IP:-Belum diset} | Port: $WIFI_PORT"
+                    note "  FPS: $WIFI_FPS | Bitrate: $WIFI_BITRATE | Resolusi: $WIFI_RESOLUTION | Codec: $WIFI_CODEC"
+                    note "  Stay Awake: $WIFI_STAY_AWAKE | No Control: $WIFI_NO_CONTROL | Layar Mati: $WIFI_TURN_SCREEN_OFF"
+                    echo ""
+                    echo -e "  ${CYAN}  ─── Config Wireless Debug ────────────────────${RESET}"
+                    note "  IP: ${WD_IP:-Belum diset} | Port: $WD_PORT"
+                    note "  FPS: $WD_FPS | Bitrate: $WD_BITRATE | Resolusi: $WD_RESOLUTION | Codec: $WD_CODEC"
+                    note "  Stay Awake: $WD_STAY_AWAKE | No Control: $WD_NO_CONTROL | Layar Mati: $WD_TURN_SCREEN_OFF"
+                    separator
+                    echo ""
+                    read -rp "$(echo -e "${YELLOW}  Hapus semua konfigurasi? [y/n]: ${RESET}")" del_conf
                     if [[ "$del_conf" =~ ^[Yy]$ ]]; then
                         rm -f "$CONFIG_FILE"
                         info "Konfigurasi dihapus."
+                        muat_config
                     fi
                 else
                     warn "Belum ada konfigurasi tersimpan."

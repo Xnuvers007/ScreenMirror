@@ -105,46 +105,203 @@ echo   %ESC%[37m  [i]  %~1%ESC%[0m
 goto :eof
 
 :: ============================================================
-:: SAVE & LOAD CONFIGURATION
+:: SAVE & LOAD CONFIGURATION (Per-Mode: USB / WiFi / Wireless Debug)
 :: ============================================================
 
 :SAVE_CONFIG
 (
     echo ; ScreenMirror Configuration - English
     echo ; Last saved: %DATE% %TIME%
-    echo LAST_IP=%LAST_IP%
-    echo LAST_PORT=%LAST_PORT%
-    echo LAST_FPS=%LAST_FPS%
-    echo LAST_BITRATE=%LAST_BITRATE%
-    echo LAST_RESOLUTION=%LAST_RESOLUTION%
-    echo LAST_CODEC=%LAST_CODEC%
     echo LAST_CONNECTION=%LAST_CONNECTION%
-    echo STAY_AWAKE=%STAY_AWAKE%
-    echo NO_CONTROL=%NO_CONTROL%
-    echo TURN_SCREEN_OFF=%TURN_SCREEN_OFF%
+    echo ; --- USB Config ---
+    echo USB_FPS=%USB_FPS%
+    echo USB_BITRATE=%USB_BITRATE%
+    echo USB_RESOLUTION=%USB_RESOLUTION%
+    echo USB_CODEC=%USB_CODEC%
+    echo USB_STAY_AWAKE=%USB_STAY_AWAKE%
+    echo USB_NO_CONTROL=%USB_NO_CONTROL%
+    echo USB_TURN_SCREEN_OFF=%USB_TURN_SCREEN_OFF%
+    echo ; --- WiFi Config ---
+    echo WIFI_IP=%WIFI_IP%
+    echo WIFI_PORT=%WIFI_PORT%
+    echo WIFI_FPS=%WIFI_FPS%
+    echo WIFI_BITRATE=%WIFI_BITRATE%
+    echo WIFI_RESOLUTION=%WIFI_RESOLUTION%
+    echo WIFI_CODEC=%WIFI_CODEC%
+    echo WIFI_STAY_AWAKE=%WIFI_STAY_AWAKE%
+    echo WIFI_NO_CONTROL=%WIFI_NO_CONTROL%
+    echo WIFI_TURN_SCREEN_OFF=%WIFI_TURN_SCREEN_OFF%
+    echo ; --- Wireless Debug Config ---
+    echo WD_IP=%WD_IP%
+    echo WD_PORT=%WD_PORT%
+    echo WD_FPS=%WD_FPS%
+    echo WD_BITRATE=%WD_BITRATE%
+    echo WD_RESOLUTION=%WD_RESOLUTION%
+    echo WD_CODEC=%WD_CODEC%
+    echo WD_STAY_AWAKE=%WD_STAY_AWAKE%
+    echo WD_NO_CONTROL=%WD_NO_CONTROL%
+    echo WD_TURN_SCREEN_OFF=%WD_TURN_SCREEN_OFF%
 ) > "%CONFIG_FILE%"
 call :OK "Configuration saved to: %CONFIG_FILE%"
 goto :eof
 
 :LOAD_CONFIG
-set "LAST_IP="
-set "LAST_PORT=5555"
-set "LAST_FPS=60"
-set "LAST_BITRATE=8M"
-set "LAST_RESOLUTION=1080"
-set "LAST_CODEC=h264"
+:: Defaults for all modes
 set "LAST_CONNECTION=1"
-set "STAY_AWAKE=y"
-set "NO_CONTROL=n"
-set "TURN_SCREEN_OFF=n"
+:: USB defaults
+set "USB_FPS=60"
+set "USB_BITRATE=8M"
+set "USB_RESOLUTION=1080"
+set "USB_CODEC=h264"
+set "USB_STAY_AWAKE=y"
+set "USB_NO_CONTROL=n"
+set "USB_TURN_SCREEN_OFF=n"
+:: WiFi defaults
+set "WIFI_IP="
+set "WIFI_PORT=5555"
+set "WIFI_FPS=60"
+set "WIFI_BITRATE=8M"
+set "WIFI_RESOLUTION=1080"
+set "WIFI_CODEC=h264"
+set "WIFI_STAY_AWAKE=y"
+set "WIFI_NO_CONTROL=n"
+set "WIFI_TURN_SCREEN_OFF=n"
+:: Wireless Debug defaults
+set "WD_IP="
+set "WD_PORT=5555"
+set "WD_FPS=60"
+set "WD_BITRATE=8M"
+set "WD_RESOLUTION=1080"
+set "WD_CODEC=h264"
+set "WD_STAY_AWAKE=y"
+set "WD_NO_CONTROL=n"
+set "WD_TURN_SCREEN_OFF=n"
 
 if exist "%CONFIG_FILE%" (
+    :: Check if old format (has LAST_IP= but no USB_FPS=)
+    findstr /b "LAST_IP=" "%CONFIG_FILE%" >nul 2>&1
+    if !errorlevel! equ 0 (
+        findstr /b "USB_FPS=" "%CONFIG_FILE%" >nul 2>&1
+        if !errorlevel! neq 0 (
+            :: Migrate old config
+            for /f "usebackq tokens=1,* delims==" %%a in ("%CONFIG_FILE%") do (
+                set "_line_first=%%a"
+                if not "!_line_first!"=="" if not "!_line_first:~0,1!"==";" if not "!_line_first:~0,1!"=="#" (
+                    set "%%a=%%b"
+                )
+            )
+            :: Copy old values to USB config
+            set "USB_FPS=!LAST_FPS!"
+            set "USB_BITRATE=!LAST_BITRATE!"
+            set "USB_RESOLUTION=!LAST_RESOLUTION!"
+            set "USB_CODEC=!LAST_CODEC!"
+            set "USB_STAY_AWAKE=!STAY_AWAKE!"
+            set "USB_NO_CONTROL=!NO_CONTROL!"
+            set "USB_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+            if "!LAST_CONNECTION!"=="2" (
+                set "WIFI_IP=!LAST_IP!"
+                set "WIFI_PORT=!LAST_PORT!"
+                set "WIFI_FPS=!LAST_FPS!"
+                set "WIFI_BITRATE=!LAST_BITRATE!"
+                set "WIFI_RESOLUTION=!LAST_RESOLUTION!"
+                set "WIFI_CODEC=!LAST_CODEC!"
+                set "WIFI_STAY_AWAKE=!STAY_AWAKE!"
+                set "WIFI_NO_CONTROL=!NO_CONTROL!"
+                set "WIFI_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+            )
+            if "!LAST_CONNECTION!"=="3" (
+                set "WD_IP=!LAST_IP!"
+                set "WD_PORT=!LAST_PORT!"
+                set "WD_FPS=!LAST_FPS!"
+                set "WD_BITRATE=!LAST_BITRATE!"
+                set "WD_RESOLUTION=!LAST_RESOLUTION!"
+                set "WD_CODEC=!LAST_CODEC!"
+                set "WD_STAY_AWAKE=!STAY_AWAKE!"
+                set "WD_NO_CONTROL=!NO_CONTROL!"
+                set "WD_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+            )
+            call :OK "Old config migrated to per-mode format."
+            call :SAVE_CONFIG
+            goto :eof
+        )
+    )
+    :: New format: load normally
     for /f "usebackq tokens=1,* delims==" %%a in ("%CONFIG_FILE%") do (
         set "_line_first=%%a"
         if not "!_line_first!"=="" if not "!_line_first:~0,1!"==";" if not "!_line_first:~0,1!"=="#" (
             set "%%a=%%b"
         )
     )
+)
+goto :eof
+
+:: Load mode-specific config into working variables
+:LOAD_MODE_CONFIG
+if "%~1"=="USB" (
+    set "LAST_FPS=!USB_FPS!"
+    set "LAST_BITRATE=!USB_BITRATE!"
+    set "LAST_RESOLUTION=!USB_RESOLUTION!"
+    set "LAST_CODEC=!USB_CODEC!"
+    set "STAY_AWAKE=!USB_STAY_AWAKE!"
+    set "NO_CONTROL=!USB_NO_CONTROL!"
+    set "TURN_SCREEN_OFF=!USB_TURN_SCREEN_OFF!"
+)
+if "%~1"=="WIFI" (
+    set "LAST_IP=!WIFI_IP!"
+    set "LAST_PORT=!WIFI_PORT!"
+    set "LAST_FPS=!WIFI_FPS!"
+    set "LAST_BITRATE=!WIFI_BITRATE!"
+    set "LAST_RESOLUTION=!WIFI_RESOLUTION!"
+    set "LAST_CODEC=!WIFI_CODEC!"
+    set "STAY_AWAKE=!WIFI_STAY_AWAKE!"
+    set "NO_CONTROL=!WIFI_NO_CONTROL!"
+    set "TURN_SCREEN_OFF=!WIFI_TURN_SCREEN_OFF!"
+)
+if "%~1"=="WD" (
+    set "LAST_IP=!WD_IP!"
+    set "LAST_PORT=!WD_PORT!"
+    set "LAST_FPS=!WD_FPS!"
+    set "LAST_BITRATE=!WD_BITRATE!"
+    set "LAST_RESOLUTION=!WD_RESOLUTION!"
+    set "LAST_CODEC=!WD_CODEC!"
+    set "STAY_AWAKE=!WD_STAY_AWAKE!"
+    set "NO_CONTROL=!WD_NO_CONTROL!"
+    set "TURN_SCREEN_OFF=!WD_TURN_SCREEN_OFF!"
+)
+goto :eof
+
+:: Save working variables back to mode-specific variables
+:SAVE_MODE_CONFIG
+if "%~1"=="USB" (
+    set "USB_FPS=!LAST_FPS!"
+    set "USB_BITRATE=!LAST_BITRATE!"
+    set "USB_RESOLUTION=!LAST_RESOLUTION!"
+    set "USB_CODEC=!LAST_CODEC!"
+    set "USB_STAY_AWAKE=!STAY_AWAKE!"
+    set "USB_NO_CONTROL=!NO_CONTROL!"
+    set "USB_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+)
+if "%~1"=="WIFI" (
+    set "WIFI_IP=!LAST_IP!"
+    set "WIFI_PORT=!LAST_PORT!"
+    set "WIFI_FPS=!LAST_FPS!"
+    set "WIFI_BITRATE=!LAST_BITRATE!"
+    set "WIFI_RESOLUTION=!LAST_RESOLUTION!"
+    set "WIFI_CODEC=!LAST_CODEC!"
+    set "WIFI_STAY_AWAKE=!STAY_AWAKE!"
+    set "WIFI_NO_CONTROL=!NO_CONTROL!"
+    set "WIFI_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+)
+if "%~1"=="WD" (
+    set "WD_IP=!LAST_IP!"
+    set "WD_PORT=!LAST_PORT!"
+    set "WD_FPS=!LAST_FPS!"
+    set "WD_BITRATE=!LAST_BITRATE!"
+    set "WD_RESOLUTION=!LAST_RESOLUTION!"
+    set "WD_CODEC=!LAST_CODEC!"
+    set "WD_STAY_AWAKE=!STAY_AWAKE!"
+    set "WD_NO_CONTROL=!NO_CONTROL!"
+    set "WD_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
 )
 goto :eof
 
@@ -369,14 +526,18 @@ call :PRINT_BANNER
 echo.
 echo   %ESC%[35m  === STARTING SCREEN MIRROR ===%ESC%[0m
 echo.
-set "SCRCPY_ARGS=--video-codec=!LAST_CODEC! -b !LAST_BITRATE! --max-fps !LAST_FPS!"
+set "SCRCPY_ARGS="
+if "!LAST_CONNECTION!"=="1" set "SCRCPY_ARGS=-d "
+if "!LAST_CONNECTION!"=="2" set "SCRCPY_ARGS=-s !LAST_IP!:!LAST_PORT! "
+if "!LAST_CONNECTION!"=="3" set "SCRCPY_ARGS=-s !LAST_IP!:!LAST_PORT! "
+set "SCRCPY_ARGS=!SCRCPY_ARGS!--video-codec=!LAST_CODEC! -b !LAST_BITRATE! --max-fps !LAST_FPS!"
 if not "!LAST_RESOLUTION!"=="0" set "SCRCPY_ARGS=!SCRCPY_ARGS! --max-size !LAST_RESOLUTION!"
 if /i "!STAY_AWAKE!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --stay-awake"
 if /i "!TURN_SCREEN_OFF!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --turn-screen-off"
 if /i "!NO_CONTROL!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-control"
 if /i "!RECORD_SCREEN!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --record !RECORD_FILENAME!"
 if /i "!MIRROR_CAMERA!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --video-source=camera --camera-facing=!CAMERA_FACING!"
-if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=--otg"
+if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --otg"
 if "!WINDOW_OPTIONS!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top"
 if "!WINDOW_OPTIONS!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --window-borderless"
 if "!WINDOW_OPTIONS!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top --window-borderless"
@@ -406,8 +567,16 @@ goto :eof
 call :CHECK_DEVICE
 if not defined DEVICE_ID goto :MAIN_MENU
 set "LAST_CONNECTION=1"
-call :CONFIGURE_SCRCPY
-call :CONFIGURE_FEATURES
+call :LOAD_MODE_CONFIG "USB"
+echo.
+echo   %ESC%[36m  Saved USB config: FPS=!LAST_FPS! Bitrate=!LAST_BITRATE! Resolution=!LAST_RESOLUTION! Codec=!LAST_CODEC!%ESC%[0m
+set /p "_reuse=  Use saved USB configuration? [y/n] (default: y): "
+if "!_reuse!"=="" set "_reuse=y"
+if /i not "!_reuse!"=="y" (
+    call :CONFIGURE_SCRCPY
+    call :CONFIGURE_FEATURES
+)
+call :SAVE_MODE_CONFIG "USB"
 call :SAVE_CONFIG
 call :LAUNCH_SCRCPY
 pause
@@ -422,8 +591,9 @@ call :NOTE "STEP 1: Make sure USB cable is still connected for initial setup"
 call :CHECK_DEVICE
 if not defined DEVICE_ID goto :MAIN_MENU
 
+call :LOAD_MODE_CONFIG "WIFI"
 echo.
-set /p "input_port=  Enter TCP port [default: %LAST_PORT%]: "
+set /p "input_port=  Enter TCP port [default: !LAST_PORT!]: "
 if not "!input_port!"=="" set "LAST_PORT=!input_port!"
 
 call :NOTE "STEP 2: Enabling TCP/IP mode on phone..."
@@ -431,10 +601,19 @@ call :NOTE "STEP 2: Enabling TCP/IP mode on phone..."
 timeout /t 2 /nobreak >nul
 
 echo.
-call :NOTE "Find phone IP: Settings -> About Phone -> Status -> IP Address"
-call :NOTE "           OR: Settings -> WiFi -> (your network) -> Details"
+call :NOTE "Find phone IP: Settings - About Phone - Status - IP Address"
+call :NOTE "           OR: Settings - WiFi - (your network) - Details"
 echo.
-set /p "LAST_IP=  Enter Android phone IP address: "
+if defined LAST_IP (
+    if not "!LAST_IP!"=="" (
+        set /p "input_ip=  Enter Android phone IP address [default: !LAST_IP!]: "
+        if not "!input_ip!"=="" set "LAST_IP=!input_ip!"
+    ) else (
+        set /p "LAST_IP=  Enter Android phone IP address: "
+    )
+) else (
+    set /p "LAST_IP=  Enter Android phone IP address: "
+)
 if "!LAST_IP!"=="" ( call :ERR "IP cannot be empty!"; pause; goto :MAIN_MENU )
 
 echo.
@@ -458,8 +637,15 @@ if !errorlevel! neq 0 (
 
 call :OK "WiFi connection successful!"
 set "LAST_CONNECTION=2"
-call :CONFIGURE_SCRCPY
-call :CONFIGURE_FEATURES
+echo.
+echo   %ESC%[36m  Saved WiFi config: FPS=!LAST_FPS! Bitrate=!LAST_BITRATE! Resolution=!LAST_RESOLUTION! Codec=!LAST_CODEC!%ESC%[0m
+set /p "_reuse=  Use saved WiFi configuration? [y/n] (default: y): "
+if "!_reuse!"=="" set "_reuse=y"
+if /i not "!_reuse!"=="y" (
+    call :CONFIGURE_SCRCPY
+    call :CONFIGURE_FEATURES
+)
+call :SAVE_MODE_CONFIG "WIFI"
 call :SAVE_CONFIG
 call :LAUNCH_SCRCPY
 pause
@@ -473,6 +659,7 @@ echo.
 call :WARN "This requires Android 11 or newer!"
 call :NOTE "For Android 10 and below, use the WiFi connection option."
 echo.
+call :LOAD_MODE_CONFIG "WD"
 set /p "DO_PAIR=  First time? (Pairing needed) [y/n] (default: y): "
 if "!DO_PAIR!"=="" set "DO_PAIR=y"
 
@@ -481,8 +668,8 @@ goto :WD_CONNECT
 
 :DO_PAIRING_WD
 echo.
-call :NOTE "On phone: Settings -> Developer Options -> Wireless Debugging"
-call :NOTE "          -> 'Pair device with pairing code'"
+call :NOTE "On phone: Settings - Developer Options - Wireless Debugging"
+call :NOTE "          - 'Pair device with pairing code'"
 call :NOTE "Note the IP:PORT and 6-digit code"
 echo.
 set "PAIR_ADDR="
@@ -539,9 +726,26 @@ if /i "!DO_MDNS!"=="y" (
 
 echo.
 call :NOTE "On phone: note the IP address and Port in the Wireless Debugging menu"
-set "LAST_IP="
-set /p "LAST_IP=  Enter phone IP: "
-set /p "LAST_PORT=  Enter Port (from Wireless Debugging): "
+if defined LAST_IP (
+    if not "!LAST_IP!"=="" (
+        set /p "input_ip=  Enter phone IP [default: !LAST_IP!]: "
+        if not "!input_ip!"=="" set "LAST_IP=!input_ip!"
+    ) else (
+        set /p "LAST_IP=  Enter phone IP: "
+    )
+) else (
+    set /p "LAST_IP=  Enter phone IP: "
+)
+if defined LAST_PORT (
+    if not "!LAST_PORT!"=="" (
+        set /p "input_port=  Enter Port [default: !LAST_PORT!]: "
+        if not "!input_port!"=="" set "LAST_PORT=!input_port!"
+    ) else (
+        set /p "LAST_PORT=  Enter Port (from Wireless Debugging): "
+    )
+) else (
+    set /p "LAST_PORT=  Enter Port (from Wireless Debugging): "
+)
 if "!LAST_IP!"=="" (
     call :ERR "IP cannot be empty!"
     pause
@@ -566,8 +770,15 @@ if !errorlevel! neq 0 (
 
 call :OK "Wireless Debugging connected!"
 set "LAST_CONNECTION=3"
-call :CONFIGURE_SCRCPY
-call :CONFIGURE_FEATURES
+echo.
+echo   %ESC%[36m  Saved Wireless Debug config: FPS=!LAST_FPS! Bitrate=!LAST_BITRATE! Resolution=!LAST_RESOLUTION! Codec=!LAST_CODEC!%ESC%[0m
+set /p "_reuse=  Use saved Wireless Debug configuration? [y/n] (default: y): "
+if "!_reuse!"=="" set "_reuse=y"
+if /i not "!_reuse!"=="y" (
+    call :CONFIGURE_SCRCPY
+    call :CONFIGURE_FEATURES
+)
+call :SAVE_MODE_CONFIG "WD"
 call :SAVE_CONFIG
 call :LAUNCH_SCRCPY
 pause
@@ -830,12 +1041,26 @@ echo.
 echo   %ESC%[35m  === SAVED CONFIGURATION ===%ESC%[0m
 echo.
 if exist "%CONFIG_FILE%" (
-    type "%CONFIG_FILE%"
+    echo   %ESC%[36m  --- USB Config ------------------------------------------%ESC%[0m
+    call :NOTE "FPS: !USB_FPS! ^| Bitrate: !USB_BITRATE! ^| Resolution: !USB_RESOLUTION! ^| Codec: !USB_CODEC!"
+    call :NOTE "Stay Awake: !USB_STAY_AWAKE! ^| No Control: !USB_NO_CONTROL! ^| Screen Off: !USB_TURN_SCREEN_OFF!"
     echo.
-    set /p "del_conf=  Delete configuration? [y/n]: "
+    echo   %ESC%[36m  --- WiFi Config -----------------------------------------%ESC%[0m
+    if defined WIFI_IP ( call :NOTE "IP: !WIFI_IP! ^| Port: !WIFI_PORT!" ) else ( call :NOTE "IP: Not set ^| Port: !WIFI_PORT!" )
+    call :NOTE "FPS: !WIFI_FPS! ^| Bitrate: !WIFI_BITRATE! ^| Resolution: !WIFI_RESOLUTION! ^| Codec: !WIFI_CODEC!"
+    call :NOTE "Stay Awake: !WIFI_STAY_AWAKE! ^| No Control: !WIFI_NO_CONTROL! ^| Screen Off: !WIFI_TURN_SCREEN_OFF!"
+    echo.
+    echo   %ESC%[36m  --- Wireless Debug Config -------------------------------%ESC%[0m
+    if defined WD_IP ( call :NOTE "IP: !WD_IP! ^| Port: !WD_PORT!" ) else ( call :NOTE "IP: Not set ^| Port: !WD_PORT!" )
+    call :NOTE "FPS: !WD_FPS! ^| Bitrate: !WD_BITRATE! ^| Resolution: !WD_RESOLUTION! ^| Codec: !WD_CODEC!"
+    call :NOTE "Stay Awake: !WD_STAY_AWAKE! ^| No Control: !WD_NO_CONTROL! ^| Screen Off: !WD_TURN_SCREEN_OFF!"
+    echo.
+    call :PRINT_SEP
+    set /p "del_conf=  Delete all configuration? [y/n]: "
     if /i "!del_conf!"=="y" (
         del "%CONFIG_FILE%"
         call :OK "Configuration deleted."
+        call :LOAD_CONFIG
     )
 ) else (
     call :WARN "No saved configuration yet."
@@ -851,11 +1076,9 @@ goto :MAIN_MENU
 :MAIN_MENU
 call :PRINT_BANNER
 
-if defined LAST_IP (
-    if not "!LAST_IP!"=="" (
-        call :NOTE "Last config: IP=!LAST_IP! PORT=!LAST_PORT! FPS=!LAST_FPS! Bitrate=!LAST_BITRATE!"
-    )
-)
+if "!LAST_CONNECTION!"=="1" call :NOTE "Last connection: USB  (FPS=!USB_FPS! Bitrate=!USB_BITRATE!)"
+if "!LAST_CONNECTION!"=="2" call :NOTE "Last connection: WiFi  (IP=!WIFI_IP! Port=!WIFI_PORT!)"
+if "!LAST_CONNECTION!"=="3" call :NOTE "Last connection: Wireless Debug  (IP=!WD_IP! Port=!WD_PORT!)"
 
 echo.
 echo   %ESC%[36m  --- CONNECTION --------------------------------------%ESC%[0m

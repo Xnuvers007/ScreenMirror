@@ -105,46 +105,197 @@ echo   %ESC%[37m  [i]  %~1%ESC%[0m
 goto :eof
 
 :: ============================================================
-:: SAVE & LOAD CONFIGURATION
+:: SAVE & LOAD CONFIGURATION (Per-Mode: USB / WiFi / Wireless Debug)
 :: ============================================================
 
 :SAVE_CONFIG
 (
     echo ; ScreenMirror Configuration - Indonesia
     echo ; Last saved: %DATE% %TIME%
-    echo LAST_IP=%LAST_IP%
-    echo LAST_PORT=%LAST_PORT%
-    echo LAST_FPS=%LAST_FPS%
-    echo LAST_BITRATE=%LAST_BITRATE%
-    echo LAST_RESOLUTION=%LAST_RESOLUTION%
-    echo LAST_CODEC=%LAST_CODEC%
     echo LAST_CONNECTION=%LAST_CONNECTION%
-    echo STAY_AWAKE=%STAY_AWAKE%
-    echo NO_CONTROL=%NO_CONTROL%
-    echo TURN_SCREEN_OFF=%TURN_SCREEN_OFF%
+    echo ; --- USB Config ---
+    echo USB_FPS=%USB_FPS%
+    echo USB_BITRATE=%USB_BITRATE%
+    echo USB_RESOLUTION=%USB_RESOLUTION%
+    echo USB_CODEC=%USB_CODEC%
+    echo USB_STAY_AWAKE=%USB_STAY_AWAKE%
+    echo USB_NO_CONTROL=%USB_NO_CONTROL%
+    echo USB_TURN_SCREEN_OFF=%USB_TURN_SCREEN_OFF%
+    echo ; --- WiFi Config ---
+    echo WIFI_IP=%WIFI_IP%
+    echo WIFI_PORT=%WIFI_PORT%
+    echo WIFI_FPS=%WIFI_FPS%
+    echo WIFI_BITRATE=%WIFI_BITRATE%
+    echo WIFI_RESOLUTION=%WIFI_RESOLUTION%
+    echo WIFI_CODEC=%WIFI_CODEC%
+    echo WIFI_STAY_AWAKE=%WIFI_STAY_AWAKE%
+    echo WIFI_NO_CONTROL=%WIFI_NO_CONTROL%
+    echo WIFI_TURN_SCREEN_OFF=%WIFI_TURN_SCREEN_OFF%
+    echo ; --- Wireless Debug Config ---
+    echo WD_IP=%WD_IP%
+    echo WD_PORT=%WD_PORT%
+    echo WD_FPS=%WD_FPS%
+    echo WD_BITRATE=%WD_BITRATE%
+    echo WD_RESOLUTION=%WD_RESOLUTION%
+    echo WD_CODEC=%WD_CODEC%
+    echo WD_STAY_AWAKE=%WD_STAY_AWAKE%
+    echo WD_NO_CONTROL=%WD_NO_CONTROL%
+    echo WD_TURN_SCREEN_OFF=%WD_TURN_SCREEN_OFF%
 ) > "%CONFIG_FILE%"
 call :OK "Konfigurasi disimpan di: %CONFIG_FILE%"
 goto :eof
 
 :LOAD_CONFIG
-set "LAST_IP="
-set "LAST_PORT=5555"
-set "LAST_FPS=60"
-set "LAST_BITRATE=8M"
-set "LAST_RESOLUTION=1080"
-set "LAST_CODEC=h264"
+:: Defaults semua mode
 set "LAST_CONNECTION=1"
-set "STAY_AWAKE=y"
-set "NO_CONTROL=n"
-set "TURN_SCREEN_OFF=n"
+:: USB defaults
+set "USB_FPS=60"
+set "USB_BITRATE=8M"
+set "USB_RESOLUTION=1080"
+set "USB_CODEC=h264"
+set "USB_STAY_AWAKE=y"
+set "USB_NO_CONTROL=n"
+set "USB_TURN_SCREEN_OFF=n"
+:: WiFi defaults
+set "WIFI_IP="
+set "WIFI_PORT=5555"
+set "WIFI_FPS=60"
+set "WIFI_BITRATE=8M"
+set "WIFI_RESOLUTION=1080"
+set "WIFI_CODEC=h264"
+set "WIFI_STAY_AWAKE=y"
+set "WIFI_NO_CONTROL=n"
+set "WIFI_TURN_SCREEN_OFF=n"
+:: Wireless Debug defaults
+set "WD_IP="
+set "WD_PORT=5555"
+set "WD_FPS=60"
+set "WD_BITRATE=8M"
+set "WD_RESOLUTION=1080"
+set "WD_CODEC=h264"
+set "WD_STAY_AWAKE=y"
+set "WD_NO_CONTROL=n"
+set "WD_TURN_SCREEN_OFF=n"
 
 if exist "%CONFIG_FILE%" (
+    findstr /b "LAST_IP=" "%CONFIG_FILE%" >nul 2>&1
+    if !errorlevel! equ 0 (
+        findstr /b "USB_FPS=" "%CONFIG_FILE%" >nul 2>&1
+        if !errorlevel! neq 0 (
+            for /f "usebackq tokens=1,* delims==" %%a in ("%CONFIG_FILE%") do (
+                set "_line_first=%%a"
+                if not "!_line_first!"=="" if not "!_line_first:~0,1!"==";" if not "!_line_first:~0,1!"=="#" (
+                    set "%%a=%%b"
+                )
+            )
+            set "USB_FPS=!LAST_FPS!"
+            set "USB_BITRATE=!LAST_BITRATE!"
+            set "USB_RESOLUTION=!LAST_RESOLUTION!"
+            set "USB_CODEC=!LAST_CODEC!"
+            set "USB_STAY_AWAKE=!STAY_AWAKE!"
+            set "USB_NO_CONTROL=!NO_CONTROL!"
+            set "USB_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+            if "!LAST_CONNECTION!"=="2" (
+                set "WIFI_IP=!LAST_IP!"
+                set "WIFI_PORT=!LAST_PORT!"
+                set "WIFI_FPS=!LAST_FPS!"
+                set "WIFI_BITRATE=!LAST_BITRATE!"
+                set "WIFI_RESOLUTION=!LAST_RESOLUTION!"
+                set "WIFI_CODEC=!LAST_CODEC!"
+                set "WIFI_STAY_AWAKE=!STAY_AWAKE!"
+                set "WIFI_NO_CONTROL=!NO_CONTROL!"
+                set "WIFI_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+            )
+            if "!LAST_CONNECTION!"=="3" (
+                set "WD_IP=!LAST_IP!"
+                set "WD_PORT=!LAST_PORT!"
+                set "WD_FPS=!LAST_FPS!"
+                set "WD_BITRATE=!LAST_BITRATE!"
+                set "WD_RESOLUTION=!LAST_RESOLUTION!"
+                set "WD_CODEC=!LAST_CODEC!"
+                set "WD_STAY_AWAKE=!STAY_AWAKE!"
+                set "WD_NO_CONTROL=!NO_CONTROL!"
+                set "WD_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+            )
+            call :OK "Konfigurasi lama berhasil dimigrasi ke format per-mode."
+            call :SAVE_CONFIG
+            goto :eof
+        )
+    )
     for /f "usebackq tokens=1,* delims==" %%a in ("%CONFIG_FILE%") do (
         set "_line_first=%%a"
         if not "!_line_first!"=="" if not "!_line_first:~0,1!"==";" if not "!_line_first:~0,1!"=="#" (
             set "%%a=%%b"
         )
     )
+)
+goto :eof
+
+:LOAD_MODE_CONFIG
+if "%~1"=="USB" (
+    set "LAST_FPS=!USB_FPS!"
+    set "LAST_BITRATE=!USB_BITRATE!"
+    set "LAST_RESOLUTION=!USB_RESOLUTION!"
+    set "LAST_CODEC=!USB_CODEC!"
+    set "STAY_AWAKE=!USB_STAY_AWAKE!"
+    set "NO_CONTROL=!USB_NO_CONTROL!"
+    set "TURN_SCREEN_OFF=!USB_TURN_SCREEN_OFF!"
+)
+if "%~1"=="WIFI" (
+    set "LAST_IP=!WIFI_IP!"
+    set "LAST_PORT=!WIFI_PORT!"
+    set "LAST_FPS=!WIFI_FPS!"
+    set "LAST_BITRATE=!WIFI_BITRATE!"
+    set "LAST_RESOLUTION=!WIFI_RESOLUTION!"
+    set "LAST_CODEC=!WIFI_CODEC!"
+    set "STAY_AWAKE=!WIFI_STAY_AWAKE!"
+    set "NO_CONTROL=!WIFI_NO_CONTROL!"
+    set "TURN_SCREEN_OFF=!WIFI_TURN_SCREEN_OFF!"
+)
+if "%~1"=="WD" (
+    set "LAST_IP=!WD_IP!"
+    set "LAST_PORT=!WD_PORT!"
+    set "LAST_FPS=!WD_FPS!"
+    set "LAST_BITRATE=!WD_BITRATE!"
+    set "LAST_RESOLUTION=!WD_RESOLUTION!"
+    set "LAST_CODEC=!WD_CODEC!"
+    set "STAY_AWAKE=!WD_STAY_AWAKE!"
+    set "NO_CONTROL=!WD_NO_CONTROL!"
+    set "TURN_SCREEN_OFF=!WD_TURN_SCREEN_OFF!"
+)
+goto :eof
+
+:SAVE_MODE_CONFIG
+if "%~1"=="USB" (
+    set "USB_FPS=!LAST_FPS!"
+    set "USB_BITRATE=!LAST_BITRATE!"
+    set "USB_RESOLUTION=!LAST_RESOLUTION!"
+    set "USB_CODEC=!LAST_CODEC!"
+    set "USB_STAY_AWAKE=!STAY_AWAKE!"
+    set "USB_NO_CONTROL=!NO_CONTROL!"
+    set "USB_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+)
+if "%~1"=="WIFI" (
+    set "WIFI_IP=!LAST_IP!"
+    set "WIFI_PORT=!LAST_PORT!"
+    set "WIFI_FPS=!LAST_FPS!"
+    set "WIFI_BITRATE=!LAST_BITRATE!"
+    set "WIFI_RESOLUTION=!LAST_RESOLUTION!"
+    set "WIFI_CODEC=!LAST_CODEC!"
+    set "WIFI_STAY_AWAKE=!STAY_AWAKE!"
+    set "WIFI_NO_CONTROL=!NO_CONTROL!"
+    set "WIFI_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
+)
+if "%~1"=="WD" (
+    set "WD_IP=!LAST_IP!"
+    set "WD_PORT=!LAST_PORT!"
+    set "WD_FPS=!LAST_FPS!"
+    set "WD_BITRATE=!LAST_BITRATE!"
+    set "WD_RESOLUTION=!LAST_RESOLUTION!"
+    set "WD_CODEC=!LAST_CODEC!"
+    set "WD_STAY_AWAKE=!STAY_AWAKE!"
+    set "WD_NO_CONTROL=!NO_CONTROL!"
+    set "WD_TURN_SCREEN_OFF=!TURN_SCREEN_OFF!"
 )
 goto :eof
 
@@ -369,14 +520,18 @@ call :PRINT_BANNER
 echo.
 echo   %ESC%[35m  === MEMULAI SCREEN MIRROR ===%ESC%[0m
 echo.
-set "SCRCPY_ARGS=--video-codec=!LAST_CODEC! -b !LAST_BITRATE! --max-fps !LAST_FPS!"
+set "SCRCPY_ARGS="
+if "!LAST_CONNECTION!"=="1" set "SCRCPY_ARGS=-d "
+if "!LAST_CONNECTION!"=="2" set "SCRCPY_ARGS=-s !LAST_IP!:!LAST_PORT! "
+if "!LAST_CONNECTION!"=="3" set "SCRCPY_ARGS=-s !LAST_IP!:!LAST_PORT! "
+set "SCRCPY_ARGS=!SCRCPY_ARGS!--video-codec=!LAST_CODEC! -b !LAST_BITRATE! --max-fps !LAST_FPS!"
 if not "!LAST_RESOLUTION!"=="0" set "SCRCPY_ARGS=!SCRCPY_ARGS! --max-size !LAST_RESOLUTION!"
 if /i "!STAY_AWAKE!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --stay-awake"
 if /i "!TURN_SCREEN_OFF!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --turn-screen-off"
 if /i "!NO_CONTROL!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-control"
 if /i "!RECORD_SCREEN!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --record !RECORD_FILENAME!"
 if /i "!MIRROR_CAMERA!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --video-source=camera --camera-facing=!CAMERA_FACING!"
-if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=--otg"
+if /i "!ENABLE_OTG!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --otg"
 if "!WINDOW_OPTIONS!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top"
 if "!WINDOW_OPTIONS!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --window-borderless"
 if "!WINDOW_OPTIONS!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --always-on-top --window-borderless"
@@ -406,8 +561,16 @@ goto :eof
 call :CHECK_DEVICE
 if not defined DEVICE_ID goto :MAIN_MENU
 set "LAST_CONNECTION=1"
-call :CONFIGURE_SCRCPY
-call :CONFIGURE_FEATURES
+call :LOAD_MODE_CONFIG "USB"
+echo.
+echo   %ESC%[36m  Config USB tersimpan: FPS=!LAST_FPS! Bitrate=!LAST_BITRATE! Resolusi=!LAST_RESOLUTION! Codec=!LAST_CODEC!%ESC%[0m
+set /p "_reuse=  Gunakan konfigurasi USB tersimpan? [y/n] (default: y): "
+if "!_reuse!"=="" set "_reuse=y"
+if /i not "!_reuse!"=="y" (
+    call :CONFIGURE_SCRCPY
+    call :CONFIGURE_FEATURES
+)
+call :SAVE_MODE_CONFIG "USB"
 call :SAVE_CONFIG
 call :LAUNCH_SCRCPY
 pause
@@ -422,8 +585,9 @@ call :NOTE "LANGKAH 1: Pastikan kabel USB masih terhubung untuk setup awal"
 call :CHECK_DEVICE
 if not defined DEVICE_ID goto :MAIN_MENU
 
+call :LOAD_MODE_CONFIG "WIFI"
 echo.
-set /p "input_port=  Masukkan port TCP [default: %LAST_PORT%]: "
+set /p "input_port=  Masukkan port TCP [default: !LAST_PORT!]: "
 if not "!input_port!"=="" set "LAST_PORT=!input_port!"
 
 call :NOTE "LANGKAH 2: Mengaktifkan mode TCP/IP di HP..."
@@ -431,10 +595,19 @@ call :NOTE "LANGKAH 2: Mengaktifkan mode TCP/IP di HP..."
 timeout /t 2 /nobreak >nul
 
 echo.
-call :NOTE "Cari IP HP: Pengaturan -> Tentang Ponsel -> Status -> Alamat IP"
-call :NOTE "      ATAU: Pengaturan -> WiFi -> (jaringan Anda) -> Detail"
+call :NOTE "Cari IP HP: Pengaturan - Tentang Ponsel - Status - Alamat IP"
+call :NOTE "      ATAU: Pengaturan - WiFi - (jaringan Anda) - Detail"
 echo.
-set /p "LAST_IP=  Masukkan alamat IP HP Android: "
+if defined LAST_IP (
+    if not "!LAST_IP!"=="" (
+        set /p "input_ip=  Masukkan alamat IP HP Android [default: !LAST_IP!]: "
+        if not "!input_ip!"=="" set "LAST_IP=!input_ip!"
+    ) else (
+        set /p "LAST_IP=  Masukkan alamat IP HP Android: "
+    )
+) else (
+    set /p "LAST_IP=  Masukkan alamat IP HP Android: "
+)
 if "!LAST_IP!"=="" ( call :ERR "IP tidak boleh kosong!"; pause; goto :MAIN_MENU )
 
 echo.
@@ -458,8 +631,15 @@ if !errorlevel! neq 0 (
 
 call :OK "Koneksi WiFi berhasil!"
 set "LAST_CONNECTION=2"
-call :CONFIGURE_SCRCPY
-call :CONFIGURE_FEATURES
+echo.
+echo   %ESC%[36m  Config WiFi tersimpan: FPS=!LAST_FPS! Bitrate=!LAST_BITRATE! Resolusi=!LAST_RESOLUTION! Codec=!LAST_CODEC!%ESC%[0m
+set /p "_reuse=  Gunakan konfigurasi WiFi tersimpan? [y/n] (default: y): "
+if "!_reuse!"=="" set "_reuse=y"
+if /i not "!_reuse!"=="y" (
+    call :CONFIGURE_SCRCPY
+    call :CONFIGURE_FEATURES
+)
+call :SAVE_MODE_CONFIG "WIFI"
 call :SAVE_CONFIG
 call :LAUNCH_SCRCPY
 pause
@@ -473,6 +653,7 @@ echo.
 call :WARN "Fitur ini membutuhkan Android 11 atau yang lebih baru!"
 call :NOTE "Untuk Android 10 ke bawah, gunakan opsi koneksi WiFi."
 echo.
+call :LOAD_MODE_CONFIG "WD"
 set /p "DO_PAIR=  Pertama kali? (Butuh Pairing) [y/n] (default: y): "
 if "!DO_PAIR!"=="" set "DO_PAIR=y"
 
@@ -481,8 +662,8 @@ goto :WD_CONNECT
 
 :DO_PAIRING_WD
 echo.
-call :NOTE "Di HP: Pengaturan -> Opsi Pengembang -> Wireless Debugging"
-call :NOTE "     -> 'Pasangkan perangkat dengan kode'"
+call :NOTE "Di HP: Pengaturan - Opsi Pengembang - Wireless Debugging"
+call :NOTE "     - 'Pasangkan perangkat dengan kode'"
 call :NOTE "Catat IP:PORT dan 6-digit kode"
 echo.
 set "PAIR_ADDR="
@@ -539,9 +720,26 @@ if /i "!DO_MDNS!"=="y" (
 
 echo.
 call :NOTE "Di HP: catat Alamat IP dan Port di menu Wireless Debugging"
-set "LAST_IP="
-set /p "LAST_IP=  Masukkan IP HP: "
-set /p "LAST_PORT=  Masukkan Port (dari Wireless Debugging): "
+if defined LAST_IP (
+    if not "!LAST_IP!"=="" (
+        set /p "input_ip=  Masukkan IP HP [default: !LAST_IP!]: "
+        if not "!input_ip!"=="" set "LAST_IP=!input_ip!"
+    ) else (
+        set /p "LAST_IP=  Masukkan IP HP: "
+    )
+) else (
+    set /p "LAST_IP=  Masukkan IP HP: "
+)
+if defined LAST_PORT (
+    if not "!LAST_PORT!"=="" (
+        set /p "input_port=  Masukkan Port [default: !LAST_PORT!]: "
+        if not "!input_port!"=="" set "LAST_PORT=!input_port!"
+    ) else (
+        set /p "LAST_PORT=  Masukkan Port (dari Wireless Debugging): "
+    )
+) else (
+    set /p "LAST_PORT=  Masukkan Port (dari Wireless Debugging): "
+)
 if "!LAST_IP!"=="" (
     call :ERR "IP tidak boleh kosong!"
     pause
@@ -566,8 +764,15 @@ if !errorlevel! neq 0 (
 
 call :OK "Wireless Debugging terhubung!"
 set "LAST_CONNECTION=3"
-call :CONFIGURE_SCRCPY
-call :CONFIGURE_FEATURES
+echo.
+echo   %ESC%[36m  Config Wireless Debug tersimpan: FPS=!LAST_FPS! Bitrate=!LAST_BITRATE! Resolusi=!LAST_RESOLUTION! Codec=!LAST_CODEC!%ESC%[0m
+set /p "_reuse=  Gunakan konfigurasi Wireless Debug tersimpan? [y/n] (default: y): "
+if "!_reuse!"=="" set "_reuse=y"
+if /i not "!_reuse!"=="y" (
+    call :CONFIGURE_SCRCPY
+    call :CONFIGURE_FEATURES
+)
+call :SAVE_MODE_CONFIG "WD"
 call :SAVE_CONFIG
 call :LAUNCH_SCRCPY
 pause
@@ -831,12 +1036,26 @@ echo.
 echo   %ESC%[35m  === KONFIGURASI TERSIMPAN ===%ESC%[0m
 echo.
 if exist "%CONFIG_FILE%" (
-    type "%CONFIG_FILE%"
+    echo   %ESC%[36m  --- Config USB ------------------------------------------%ESC%[0m
+    call :NOTE "FPS: !USB_FPS! ^| Bitrate: !USB_BITRATE! ^| Resolusi: !USB_RESOLUTION! ^| Codec: !USB_CODEC!"
+    call :NOTE "Stay Awake: !USB_STAY_AWAKE! ^| No Control: !USB_NO_CONTROL! ^| Layar Mati: !USB_TURN_SCREEN_OFF!"
     echo.
-    set /p "del_conf=  Hapus konfigurasi? [y/n]: "
+    echo   %ESC%[36m  --- Config WiFi -----------------------------------------%ESC%[0m
+    if defined WIFI_IP ( call :NOTE "IP: !WIFI_IP! ^| Port: !WIFI_PORT!" ) else ( call :NOTE "IP: Belum diset ^| Port: !WIFI_PORT!" )
+    call :NOTE "FPS: !WIFI_FPS! ^| Bitrate: !WIFI_BITRATE! ^| Resolusi: !WIFI_RESOLUTION! ^| Codec: !WIFI_CODEC!"
+    call :NOTE "Stay Awake: !WIFI_STAY_AWAKE! ^| No Control: !WIFI_NO_CONTROL! ^| Layar Mati: !WIFI_TURN_SCREEN_OFF!"
+    echo.
+    echo   %ESC%[36m  --- Config Wireless Debug -------------------------------%ESC%[0m
+    if defined WD_IP ( call :NOTE "IP: !WD_IP! ^| Port: !WD_PORT!" ) else ( call :NOTE "IP: Belum diset ^| Port: !WD_PORT!" )
+    call :NOTE "FPS: !WD_FPS! ^| Bitrate: !WD_BITRATE! ^| Resolusi: !WD_RESOLUTION! ^| Codec: !WD_CODEC!"
+    call :NOTE "Stay Awake: !WD_STAY_AWAKE! ^| No Control: !WD_NO_CONTROL! ^| Layar Mati: !WD_TURN_SCREEN_OFF!"
+    echo.
+    call :PRINT_SEP
+    set /p "del_conf=  Hapus semua konfigurasi? [y/n]: "
     if /i "!del_conf!"=="y" (
         del "%CONFIG_FILE%"
         call :OK "Konfigurasi dihapus."
+        call :LOAD_CONFIG
     )
 ) else (
     call :WARN "Belum ada konfigurasi yang tersimpan."
@@ -852,11 +1071,9 @@ goto :MAIN_MENU
 :MAIN_MENU
 call :PRINT_BANNER
 
-if defined LAST_IP (
-    if not "!LAST_IP!"=="" (
-        call :NOTE "Info terakhir: IP=!LAST_IP! PORT=!LAST_PORT! FPS=!LAST_FPS! Bitrate=!LAST_BITRATE!"
-    )
-)
+if "!LAST_CONNECTION!"=="1" call :NOTE "Koneksi terakhir: USB  (FPS=!USB_FPS! Bitrate=!USB_BITRATE!)"
+if "!LAST_CONNECTION!"=="2" call :NOTE "Koneksi terakhir: WiFi  (IP=!WIFI_IP! Port=!WIFI_PORT!)"
+if "!LAST_CONNECTION!"=="3" call :NOTE "Koneksi terakhir: Wireless Debug  (IP=!WD_IP! Port=!WD_PORT!)"
 
 echo.
 echo   %ESC%[36m  --- KONEKSI -----------------------------------------%ESC%[0m

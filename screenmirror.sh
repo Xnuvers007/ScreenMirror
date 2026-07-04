@@ -51,7 +51,7 @@ press_enter() {
 }
 
 # ============================================================
-# SAVE & LOAD CONFIGURATION
+# SAVE & LOAD CONFIGURATION (Per-Mode: USB / WiFi / Wireless Debug)
 # ============================================================
 
 save_config() {
@@ -59,51 +59,183 @@ save_config() {
 # ScreenMirror Configuration - Auto-saved
 # Last updated: $(date)
 LAST_CONNECTION="$LAST_CONNECTION"
-LAST_IP="$LAST_IP"
-LAST_PORT="$LAST_PORT"
-LAST_FPS="$LAST_FPS"
-LAST_BITRATE="$LAST_BITRATE"
-LAST_RESOLUTION="$LAST_RESOLUTION"
-LAST_CODEC="$LAST_CODEC"
-STAY_AWAKE="$STAY_AWAKE"
-NO_CONTROL="$NO_CONTROL"
-TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+
+# --- USB Config ---
+USB_FPS="$USB_FPS"
+USB_BITRATE="$USB_BITRATE"
+USB_RESOLUTION="$USB_RESOLUTION"
+USB_CODEC="$USB_CODEC"
+USB_STAY_AWAKE="$USB_STAY_AWAKE"
+USB_NO_CONTROL="$USB_NO_CONTROL"
+USB_TURN_SCREEN_OFF="$USB_TURN_SCREEN_OFF"
+
+# --- WiFi TCP/IP Config ---
+WIFI_IP="$WIFI_IP"
+WIFI_PORT="$WIFI_PORT"
+WIFI_FPS="$WIFI_FPS"
+WIFI_BITRATE="$WIFI_BITRATE"
+WIFI_RESOLUTION="$WIFI_RESOLUTION"
+WIFI_CODEC="$WIFI_CODEC"
+WIFI_STAY_AWAKE="$WIFI_STAY_AWAKE"
+WIFI_NO_CONTROL="$WIFI_NO_CONTROL"
+WIFI_TURN_SCREEN_OFF="$WIFI_TURN_SCREEN_OFF"
+
+# --- Wireless Debug Config ---
+WD_IP="$WD_IP"
+WD_PORT="$WD_PORT"
+WD_FPS="$WD_FPS"
+WD_BITRATE="$WD_BITRATE"
+WD_RESOLUTION="$WD_RESOLUTION"
+WD_CODEC="$WD_CODEC"
+WD_STAY_AWAKE="$WD_STAY_AWAKE"
+WD_NO_CONTROL="$WD_NO_CONTROL"
+WD_TURN_SCREEN_OFF="$WD_TURN_SCREEN_OFF"
 EOF
     info "Configuration saved to: $CONFIG_FILE"
 }
 
 load_config() {
-    # Defaults
+    # Defaults for all modes
     LAST_CONNECTION="1"
-    LAST_IP=""
-    LAST_PORT="5555"
-    LAST_FPS="60"
-    LAST_BITRATE="8M"
-    LAST_RESOLUTION="1080"
-    LAST_CODEC="h264"
-    STAY_AWAKE="y"
-    NO_CONTROL="n"
-    TURN_SCREEN_OFF="n"
+
+    # USB defaults
+    USB_FPS="60"; USB_BITRATE="8M"; USB_RESOLUTION="1080"; USB_CODEC="h264"
+    USB_STAY_AWAKE="y"; USB_NO_CONTROL="n"; USB_TURN_SCREEN_OFF="n"
+
+    # WiFi defaults
+    WIFI_IP=""; WIFI_PORT="5555"
+    WIFI_FPS="60"; WIFI_BITRATE="8M"; WIFI_RESOLUTION="1080"; WIFI_CODEC="h264"
+    WIFI_STAY_AWAKE="y"; WIFI_NO_CONTROL="n"; WIFI_TURN_SCREEN_OFF="n"
+
+    # Wireless Debug defaults
+    WD_IP=""; WD_PORT="5555"
+    WD_FPS="60"; WD_BITRATE="8M"; WD_RESOLUTION="1080"; WD_CODEC="h264"
+    WD_STAY_AWAKE="y"; WD_NO_CONTROL="n"; WD_TURN_SCREEN_OFF="n"
 
     if [ -f "$CONFIG_FILE" ]; then
-        # shellcheck source=/dev/null
-        source "$CONFIG_FILE"
-        info "Last configuration loaded from: $CONFIG_FILE"
+        # Backward compatibility: check if old format (has LAST_IP but no USB_FPS)
+        if grep -q "^LAST_IP=" "$CONFIG_FILE" && ! grep -q "^USB_FPS=" "$CONFIG_FILE"; then
+            # Migrate old config: load old values into USB config
+            # shellcheck source=/dev/null
+            source "$CONFIG_FILE"
+            USB_FPS="${LAST_FPS:-60}"; USB_BITRATE="${LAST_BITRATE:-8M}"
+            USB_RESOLUTION="${LAST_RESOLUTION:-1080}"; USB_CODEC="${LAST_CODEC:-h264}"
+            USB_STAY_AWAKE="${STAY_AWAKE:-y}"; USB_NO_CONTROL="${NO_CONTROL:-n}"
+            USB_TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+            if [ "$LAST_CONNECTION" = "2" ]; then
+                WIFI_IP="${LAST_IP:-}"; WIFI_PORT="${LAST_PORT:-5555}"
+                WIFI_FPS="${LAST_FPS:-60}"; WIFI_BITRATE="${LAST_BITRATE:-8M}"
+                WIFI_RESOLUTION="${LAST_RESOLUTION:-1080}"; WIFI_CODEC="${LAST_CODEC:-h264}"
+                WIFI_STAY_AWAKE="${STAY_AWAKE:-y}"; WIFI_NO_CONTROL="${NO_CONTROL:-n}"
+                WIFI_TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+            elif [ "$LAST_CONNECTION" = "3" ]; then
+                WD_IP="${LAST_IP:-}"; WD_PORT="${LAST_PORT:-5555}"
+                WD_FPS="${LAST_FPS:-60}"; WD_BITRATE="${LAST_BITRATE:-8M}"
+                WD_RESOLUTION="${LAST_RESOLUTION:-1080}"; WD_CODEC="${LAST_CODEC:-h264}"
+                WD_STAY_AWAKE="${STAY_AWAKE:-y}"; WD_NO_CONTROL="${NO_CONTROL:-n}"
+                WD_TURN_SCREEN_OFF="${TURN_SCREEN_OFF:-n}"
+            fi
+            info "Old configuration migrated to new per-mode format."
+            save_config
+        else
+            # shellcheck source=/dev/null
+            source "$CONFIG_FILE"
+        fi
+        info "Configuration loaded from: $CONFIG_FILE"
+    fi
+}
+
+# Load mode-specific config into LAST_* working variables
+load_mode_config() {
+    local mode="$1"  # USB, WIFI, WD
+    case "$mode" in
+        USB)
+            LAST_FPS="$USB_FPS"; LAST_BITRATE="$USB_BITRATE"
+            LAST_RESOLUTION="$USB_RESOLUTION"; LAST_CODEC="$USB_CODEC"
+            STAY_AWAKE="$USB_STAY_AWAKE"; NO_CONTROL="$USB_NO_CONTROL"
+            TURN_SCREEN_OFF="$USB_TURN_SCREEN_OFF"
+            ;;
+        WIFI)
+            LAST_IP="$WIFI_IP"; LAST_PORT="$WIFI_PORT"
+            LAST_FPS="$WIFI_FPS"; LAST_BITRATE="$WIFI_BITRATE"
+            LAST_RESOLUTION="$WIFI_RESOLUTION"; LAST_CODEC="$WIFI_CODEC"
+            STAY_AWAKE="$WIFI_STAY_AWAKE"; NO_CONTROL="$WIFI_NO_CONTROL"
+            TURN_SCREEN_OFF="$WIFI_TURN_SCREEN_OFF"
+            ;;
+        WD)
+            LAST_IP="$WD_IP"; LAST_PORT="$WD_PORT"
+            LAST_FPS="$WD_FPS"; LAST_BITRATE="$WD_BITRATE"
+            LAST_RESOLUTION="$WD_RESOLUTION"; LAST_CODEC="$WD_CODEC"
+            STAY_AWAKE="$WD_STAY_AWAKE"; NO_CONTROL="$WD_NO_CONTROL"
+            TURN_SCREEN_OFF="$WD_TURN_SCREEN_OFF"
+            ;;
+    esac
+}
+
+# Save LAST_* working variables back to mode-specific variables
+save_mode_config() {
+    local mode="$1"  # USB, WIFI, WD
+    case "$mode" in
+        USB)
+            USB_FPS="$LAST_FPS"; USB_BITRATE="$LAST_BITRATE"
+            USB_RESOLUTION="$LAST_RESOLUTION"; USB_CODEC="$LAST_CODEC"
+            USB_STAY_AWAKE="$STAY_AWAKE"; USB_NO_CONTROL="$NO_CONTROL"
+            USB_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            ;;
+        WIFI)
+            WIFI_IP="$LAST_IP"; WIFI_PORT="$LAST_PORT"
+            WIFI_FPS="$LAST_FPS"; WIFI_BITRATE="$LAST_BITRATE"
+            WIFI_RESOLUTION="$LAST_RESOLUTION"; WIFI_CODEC="$LAST_CODEC"
+            WIFI_STAY_AWAKE="$STAY_AWAKE"; WIFI_NO_CONTROL="$NO_CONTROL"
+            WIFI_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            ;;
+        WD)
+            WD_IP="$LAST_IP"; WD_PORT="$LAST_PORT"
+            WD_FPS="$LAST_FPS"; WD_BITRATE="$LAST_BITRATE"
+            WD_RESOLUTION="$LAST_RESOLUTION"; WD_CODEC="$LAST_CODEC"
+            WD_STAY_AWAKE="$STAY_AWAKE"; WD_NO_CONTROL="$NO_CONTROL"
+            WD_TURN_SCREEN_OFF="$TURN_SCREEN_OFF"
+            ;;
+    esac
+}
+
+# Ask user if they want to reuse saved config for the chosen mode
+ask_reuse_mode_config() {
+    local mode="$1"
+    local mode_label="$2"
+    local has_config=false
+
+    case "$mode" in
+        USB)   [ -n "$USB_FPS" ] && [ "$USB_FPS" != "" ] && has_config=true ;;
+        WIFI)  [ -n "$WIFI_IP" ] && [ "$WIFI_IP" != "" ] && has_config=true ;;
+        WD)    [ -n "$WD_IP" ] && [ "$WD_IP" != "" ] && has_config=true ;;
+    esac
+
+    if [ -f "$CONFIG_FILE" ] && [ "$has_config" = true ]; then
         separator
-        note "Last IP          : ${LAST_IP:-Not set}"
-        note "Last Port        : $LAST_PORT"
-        note "Last FPS         : $LAST_FPS"
-        note "Last Bitrate     : $LAST_BITRATE"
-        note "Last Connection  : $([ "$LAST_CONNECTION" = "1" ] && echo "USB" || ([ "$LAST_CONNECTION" = "2" ] && echo "WiFi/TCP" || echo "Wireless Debug"))"
+        note "Saved $mode_label config:"
+        case "$mode" in
+            USB)
+                note "  FPS: $USB_FPS | Bitrate: $USB_BITRATE | Resolution: $USB_RESOLUTION | Codec: $USB_CODEC"
+                ;;
+            WIFI)
+                note "  IP: $WIFI_IP | Port: $WIFI_PORT"
+                note "  FPS: $WIFI_FPS | Bitrate: $WIFI_BITRATE | Resolution: $WIFI_RESOLUTION | Codec: $WIFI_CODEC"
+                ;;
+            WD)
+                note "  IP: $WD_IP | Port: $WD_PORT"
+                note "  FPS: $WD_FPS | Bitrate: $WD_BITRATE | Resolution: $WD_RESOLUTION | Codec: $WD_CODEC"
+                ;;
+        esac
         separator
         echo ""
-        read -rp "$(echo -e "${YELLOW}  Use last saved configuration? [y/n] (default: y): ${RESET}")" USE_LAST
-        USE_LAST="${USE_LAST:-y}"
-        if [[ "$USE_LAST" =~ ^[Yy]$ ]]; then
-            return 0
+        read -rp "$(echo -e "${YELLOW}  Use saved $mode_label configuration? [y/n] (default: y): ${RESET}")" USE_SAVED
+        USE_SAVED="${USE_SAVED:-y}"
+        if [[ "$USE_SAVED" =~ ^[Yy]$ ]]; then
+            return 0  # reuse
         fi
     fi
-    return 1
+    return 1  # don't reuse, ask for new config
 }
 
 # ============================================================
@@ -533,6 +665,13 @@ configure_extra_features() {
 
 build_scrcpy_args() {
     local args=()
+    
+    if [ "$LAST_CONNECTION" = "1" ]; then
+        args+=("-d")
+    elif [ "$LAST_CONNECTION" = "2" ] || [ "$LAST_CONNECTION" = "3" ]; then
+        args+=("-s" "${LAST_IP}:${LAST_PORT}")
+    fi
+
     args+=("--video-codec=$LAST_CODEC")
     args+=("-b" "$LAST_BITRATE")
     args+=("--max-fps" "$LAST_FPS")
@@ -582,8 +721,12 @@ connect_usb() {
     adb kill-server &>/dev/null; adb start-server &>/dev/null
     check_device || return 1
     LAST_CONNECTION="1"
-    configure_scrcpy
-    configure_extra_features
+    load_mode_config "USB"
+    if ! ask_reuse_mode_config "USB" "USB"; then
+        configure_scrcpy
+        configure_extra_features
+    fi
+    save_mode_config "USB"
     save_config
     launch_scrcpy
 }
@@ -594,6 +737,7 @@ connect_wifi() {
     adb kill-server &>/dev/null; adb start-server &>/dev/null
     check_device || return 1
 
+    load_mode_config "WIFI"
     LAST_PORT="${LAST_PORT:-5555}"
     read -rp "$(echo -e "${YELLOW}  Enter TCP port [default: $LAST_PORT]: ${RESET}")" input_port
     LAST_PORT="${input_port:-$LAST_PORT}"
@@ -606,7 +750,8 @@ connect_wifi() {
     note "Find your phone's IP: Settings > About Phone > Status > IP Address"
     note "              OR: Settings > WiFi > (your WiFi name) > Details"
     echo ""
-    read -rp "$(echo -e "${YELLOW}  Enter Android phone IP address: ${RESET}")" LAST_IP
+    read -rp "$(echo -e "${YELLOW}  Enter Android phone IP address${LAST_IP:+ [default: $LAST_IP]}: ${RESET}")" input_ip
+    LAST_IP="${input_ip:-$LAST_IP}"
     [ -z "$LAST_IP" ] && { error "IP cannot be empty!"; return 1; }
 
     step "STEP 3: Unplug the USB cable now, then press Enter"
@@ -627,8 +772,11 @@ connect_wifi() {
 
     info "WiFi connection successful! ✓"
     LAST_CONNECTION="2"
-    configure_scrcpy
-    configure_extra_features
+    if ! ask_reuse_mode_config "WIFI" "WiFi"; then
+        configure_scrcpy
+        configure_extra_features
+    fi
+    save_mode_config "WIFI"
     save_config
     launch_scrcpy
 }
@@ -638,6 +786,8 @@ connect_wireless_debug() {
     warn "This feature requires Android 11 or newer!"
     note "For Android 10 and below, use the WiFi connection option instead."
     echo ""
+
+    load_mode_config "WD"
 
     read -rp "$(echo -e "${YELLOW}  First time? (Pairing needed) [y/n] (default: y): ${RESET}")" DO_PAIR
     DO_PAIR="${DO_PAIR:-y}"
@@ -684,8 +834,10 @@ connect_wireless_debug() {
         note "On phone: Settings > Developer Options > Wireless Debugging"
         note "Note the 'IP address & Port' shown at the top"
         echo ""
-        read -rp "$(echo -e "${YELLOW}  Enter phone IP: ${RESET}")" LAST_IP
-        read -rp "$(echo -e "${YELLOW}  Enter Port (from Wireless Debugging): ${RESET}")" LAST_PORT
+        read -rp "$(echo -e "${YELLOW}  Enter phone IP${LAST_IP:+ [default: $LAST_IP]}: ${RESET}")" input_ip
+        LAST_IP="${input_ip:-$LAST_IP}"
+        read -rp "$(echo -e "${YELLOW}  Enter Port (from Wireless Debugging)${LAST_PORT:+ [default: $LAST_PORT]}: ${RESET}")" input_port
+        LAST_PORT="${input_port:-$LAST_PORT}"
         [ -z "$LAST_IP" ] || [ -z "$LAST_PORT" ] && { error "IP and Port cannot be empty!"; return 1; }
     fi
 
@@ -703,8 +855,11 @@ connect_wireless_debug() {
 
     info "Wireless Debugging connection successful! ✓"
     LAST_CONNECTION="3"
-    configure_scrcpy
-    configure_extra_features
+    if ! ask_reuse_mode_config "WD" "Wireless Debug"; then
+        configure_scrcpy
+        configure_extra_features
+    fi
+    save_mode_config "WD"
     save_config
     launch_scrcpy
 }
@@ -799,10 +954,28 @@ main_menu() {
             9)
                 title "SAVED CONFIGURATION"
                 if [ -f "$CONFIG_FILE" ]; then
-                    cat "$CONFIG_FILE"
+                    separator
+                    echo -e "  ${CYAN}  ─── USB Config ──────────────────────────────${RESET}"
+                    note "  FPS: $USB_FPS | Bitrate: $USB_BITRATE | Resolution: $USB_RESOLUTION | Codec: $USB_CODEC"
+                    note "  Stay Awake: $USB_STAY_AWAKE | No Control: $USB_NO_CONTROL | Screen Off: $USB_TURN_SCREEN_OFF"
                     echo ""
-                    read -rp "$(echo -e "${YELLOW}  Delete configuration? [y/n]: ${RESET}")" del_conf
-                    [[ "$del_conf" =~ ^[Yy]$ ]] && rm -f "$CONFIG_FILE" && info "Configuration deleted."
+                    echo -e "  ${CYAN}  ─── WiFi Config ─────────────────────────────${RESET}"
+                    note "  IP: ${WIFI_IP:-Not set} | Port: $WIFI_PORT"
+                    note "  FPS: $WIFI_FPS | Bitrate: $WIFI_BITRATE | Resolution: $WIFI_RESOLUTION | Codec: $WIFI_CODEC"
+                    note "  Stay Awake: $WIFI_STAY_AWAKE | No Control: $WIFI_NO_CONTROL | Screen Off: $WIFI_TURN_SCREEN_OFF"
+                    echo ""
+                    echo -e "  ${CYAN}  ─── Wireless Debug Config ────────────────────${RESET}"
+                    note "  IP: ${WD_IP:-Not set} | Port: $WD_PORT"
+                    note "  FPS: $WD_FPS | Bitrate: $WD_BITRATE | Resolution: $WD_RESOLUTION | Codec: $WD_CODEC"
+                    note "  Stay Awake: $WD_STAY_AWAKE | No Control: $WD_NO_CONTROL | Screen Off: $WD_TURN_SCREEN_OFF"
+                    separator
+                    echo ""
+                    read -rp "$(echo -e "${YELLOW}  Delete all configuration? [y/n]: ${RESET}")" del_conf
+                    if [[ "$del_conf" =~ ^[Yy]$ ]]; then
+                        rm -f "$CONFIG_FILE"
+                        info "Configuration deleted."
+                        load_config
+                    fi
                 else
                     warn "No saved configuration yet."
                 fi
