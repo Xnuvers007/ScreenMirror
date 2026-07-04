@@ -140,7 +140,8 @@ set "TURN_SCREEN_OFF=n"
 
 if exist "%CONFIG_FILE%" (
     for /f "usebackq tokens=1,* delims==" %%a in ("%CONFIG_FILE%") do (
-        if not "%%a"=="" if not "%%a:~0,1%"==";" (
+        set "_line_first=%%a"
+        if not "!_line_first!"=="" if not "!_line_first:~0,1!"==";" if not "!_line_first:~0,1!"=="#" (
             set "%%a=%%b"
         )
     )
@@ -323,13 +324,10 @@ echo   %ESC%[35m  === MEMULAI SCREEN MIRROR ===%ESC%[0m
 echo.
 set "SCRCPY_ARGS=--video-codec=!LAST_CODEC! -b !LAST_BITRATE! --max-fps !LAST_FPS!"
 if not "!LAST_RESOLUTION!"=="0" set "SCRCPY_ARGS=!SCRCPY_ARGS! --max-size !LAST_RESOLUTION!"
-set "SCRCPY_ARGS=!SCRCPY_ARGS! --video-buffer=50"
 if /i "!STAY_AWAKE!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --stay-awake"
 if /i "!TURN_SCREEN_OFF!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --turn-screen-off"
 if /i "!NO_CONTROL!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-control"
 if /i "!RECORD_SCREEN!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --record !RECORD_FILENAME!"
-if "!LAST_CONNECTION!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --tcpip=!LAST_IP!:!LAST_PORT!"
-if "!LAST_CONNECTION!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --tcpip=!LAST_IP!:!LAST_PORT!"
 
 call :NOTE "Perintah: scrcpy !SCRCPY_ARGS!"
 call :PRINT_SEP
@@ -395,9 +393,10 @@ call :NOTE "LANGKAH 4: Menghubungkan via WiFi ke !LAST_IP!:!LAST_PORT!..."
 timeout /t 3 /nobreak >nul
 
 "%ADB_EXE%" devices | findstr "!LAST_IP!" >nul
-if %errorLevel% neq 0 (
+if !errorlevel! neq 0 (
     call :ERR "Koneksi WiFi gagal!"
     call :WARN "Pastikan HP dan laptop berada di WiFi yang sama"
+    call :WARN "Pastikan mode TCP/IP sudah aktif (jalankan ulang dan colok USB dulu)"
     call :WARN "Coba matikan sementara Windows Firewall"
     pause
     goto :MAIN_MENU
@@ -423,33 +422,69 @@ echo.
 set /p "DO_PAIR=  Pertama kali? (Butuh Pairing) [y/n] (default: y): "
 if "!DO_PAIR!"=="" set "DO_PAIR=y"
 
-if /i "!DO_PAIR!"=="y" (
-    echo.
-    call :NOTE "Di HP: Pengaturan -> Opsi Pengembang -> Wireless Debugging"
-    call :NOTE "     -> 'Pasangkan perangkat dengan kode'"
-    call :NOTE "Catat IP:PORT dan 6-digit kode"
-    echo.
-    set /p "PAIR_ADDR=  Masukkan IP:PORT pairing (contoh: 192.168.1.5:43521): "
-    set /p "PAIR_CODE=  Masukkan 6-digit kode dari HP: "
-    if "!PAIR_ADDR!"=="" ( call :ERR "Alamat pairing tidak boleh kosong!"; pause; goto :MAIN_MENU )
-    call :NOTE "Pairing dengan !PAIR_ADDR!..."
-    "%ADB_EXE%" pair "!PAIR_ADDR!" "!PAIR_CODE!"
-    if %errorLevel% neq 0 ( call :ERR "Pairing gagal!"; pause; goto :MAIN_MENU )
-    call :OK "Pairing berhasil!"
-)
+if /i "!DO_PAIR!"=="y" goto :DO_PAIRING_WD
+goto :WD_CONNECT
 
+:DO_PAIRING_WD
 echo.
-call :NOTE "Di HP: catat 'Alamat IP & Port' di menu Wireless Debugging"
+call :NOTE "Di HP: Pengaturan -> Opsi Pengembang -> Wireless Debugging"
+call :NOTE "     -> 'Pasangkan perangkat dengan kode'"
+call :NOTE "Catat IP:PORT dan 6-digit kode"
+echo.
+set "PAIR_ADDR="
+set "PAIR_CODE="
+set /p "PAIR_ADDR=  Masukkan IP:PORT pairing (contoh: 192.168.1.5:43521): "
+set /p "PAIR_CODE=  Masukkan 6-digit kode dari HP: "
+if "!PAIR_ADDR!"=="" (
+    call :ERR "Alamat pairing tidak boleh kosong!"
+    pause
+    goto :MAIN_MENU
+)
+if "!PAIR_CODE!"=="" (
+    call :ERR "Kode 6-digit tidak boleh kosong!"
+    pause
+    goto :MAIN_MENU
+)
+call :NOTE "Pairing dengan !PAIR_ADDR!..."
+call :NOTE "Memulai ADB server (tunggu sebentar)..."
+"%ADB_EXE%" start-server >nul 2>&1
+timeout /t 2 /nobreak >nul
+"%ADB_EXE%" pair "!PAIR_ADDR!" "!PAIR_CODE!"
+if !errorlevel! neq 0 (
+    call :ERR "Pairing gagal! Pastikan kode dan alamat benar."
+    call :WARN "Coba buka menu 'Pasangkan perangkat' di HP lagi untuk kode baru"
+    call :WARN "Pastikan IP:PORT benar (format: 192.168.x.x:PORT_BUKAN_5555)"
+    pause
+    goto :MAIN_MENU
+)
+call :OK "Pairing berhasil!"
+
+:WD_CONNECT
+echo.
+call :NOTE "Di HP: catat Alamat IP dan Port di menu Wireless Debugging"
+set "LAST_IP="
 set /p "LAST_IP=  Masukkan IP HP: "
 set /p "LAST_PORT=  Masukkan Port (dari Wireless Debugging): "
-if "!LAST_IP!"=="" ( call :ERR "IP tidak boleh kosong!"; pause; goto :MAIN_MENU )
+if "!LAST_IP!"=="" (
+    call :ERR "IP tidak boleh kosong!"
+    pause
+    goto :MAIN_MENU
+)
+if "!LAST_PORT!"=="" set "LAST_PORT=5555"
 
 call :NOTE "Menghubungkan ke !LAST_IP!:!LAST_PORT!..."
 "%ADB_EXE%" connect "!LAST_IP!:!LAST_PORT!"
-timeout /t 2 /nobreak >nul
+timeout /t 3 /nobreak >nul
 
 "%ADB_EXE%" devices | findstr "!LAST_IP!" >nul
-if %errorLevel% neq 0 ( call :ERR "Koneksi gagal!"; call :WARN "Pastikan di jaringan WiFi yang sama"; pause; goto :MAIN_MENU )
+if !errorlevel! neq 0 (
+    call :ERR "Koneksi gagal!"
+    call :WARN "Pastikan HP dan laptop di jaringan WiFi yang sama"
+    call :WARN "Pastikan Wireless Debugging masih aktif di HP"
+    call :WARN "Port dari Wireless Debugging berubah setiap koneksi WiFi ulang"
+    pause
+    goto :MAIN_MENU
+)
 
 call :OK "Wireless Debugging terhubung!"
 set "LAST_CONNECTION=3"
@@ -513,28 +548,48 @@ echo.
 echo   Hubungkan HP secara nirkabel via jaringan WiFi yang sama.
 echo.
 echo   %ESC%[36m  --- LANGKAH 1: Aktifkan Wireless Debugging ----------------%ESC%[0m
-echo   1. Pengaturan ^^> Opsi Pengembang
-echo   2. Cari "Wireless Debugging"
-echo   3. Aktifkan toggle ^^> ketuk "Izinkan"
+echo   1. Buka %ESC%[33mPengaturan%ESC%[0m di HP
+echo   2. Masuk ke %ESC%[33mOpsi Pengembang%ESC%[0m
+echo      (Jika belum ada, ketuk Nomor Build 7x di "Tentang Ponsel")
+echo   3. Cari dan aktifkan %ESC%[33m"Wireless Debugging"%ESC%[0m / "Debug Nirkabel"
+echo   4. Ketuk "Izinkan" saat ada popup konfirmasi
 echo.
-echo   %ESC%[36m  --- LANGKAH 2: Catat IP dan Port --------------------------%ESC%[0m
-echo   Di dalam menu Wireless Debugging, catat:
-echo   Alamat IP dan Port (contoh 192.168.1.5:39465)
+echo   %ESC%[36m  --- LANGKAH 2: Dapatkan Kode 6-Digit (PAIRING) ------------%ESC%[0m
+echo   %ESC%[33m  ^> Langkah ini WAJIB dilakukan sebelum koneksi pertama kali%ESC%[0m
 echo.
-echo   %ESC%[36m  --- LANGKAH 3: Pairing (Hanya Pertama Kali) ---------------%ESC%[0m
-echo   1. Ketuk "Pasangkan perangkat dengan kode"
-echo   2. Catat IP:PORT dan 6-digit kode
-echo   3. Di Command Prompt: adb pair IP:PAIR_PORT
-echo   4. Masukkan 6-digit kode
-echo   5. "Successfully paired" [OK]
+echo   1. Di dalam menu Wireless Debugging, ketuk:
+echo      %ESC%[32m"Pasangkan perangkat dengan kode penyambungan"%ESC%[0m
+echo      (atau "Pair device with pairing code")
 echo.
-echo   %ESC%[36m  --- LANGKAH 4: Hubungkan ----------------------------------%ESC%[0m
-echo   adb connect IP:PORT
-echo   Contoh: adb connect 192.168.1.5:39465
+echo   2. Di HP akan muncul 3 informasi:
+echo      %ESC%[36m  * IP Address   : %ESC%[0mcontoh  192.168.1.5
+echo      %ESC%[36m  * Port PAIRING : %ESC%[0mcontoh  43521   ^<-- port untuk adb pair
+echo      %ESC%[36m  * Kode 6-digit : %ESC%[0mcontoh  986143  ^<-- kode rahasia
 echo.
-echo   %ESC%[33m  CATATAN:%ESC%[0m
+echo   3. Di script ini, masukkan:
+echo      IP:PORT pairing  ^-->  192.168.1.5:43521
+echo      Kode 6-digit     ^-->  986143
+echo.
+echo   %ESC%[33m  PERHATIAN: Port PAIRING berbeda dengan port KONEKSI!%ESC%[0m
+echo   %ESC%[33m  Setelah selesai pairing, kembali ke layar Wireless Debugging%ESC%[0m
+echo   %ESC%[33m  untuk melihat IP ^& Port koneksi yang sesungguhnya.%ESC%[0m
+echo.
+echo   %ESC%[36m  --- LANGKAH 3: Catat IP dan Port Koneksi ------------------%ESC%[0m
+echo   Kembali ke layar utama Wireless Debugging, catat:
+echo   %ESC%[36m  "IP address ^& Port"%ESC%[0m yang tertera di bagian atas
+echo   Contoh: 192.168.1.5:39465  ^<-- ini dipakai untuk adb connect
+echo.
+echo   %ESC%[36m  --- LANGKAH 4: Hubungkan via Script -----------------------%ESC%[0m
+echo   Pilih menu 3 (Wireless Debugging) di menu utama, lalu:
+echo   - Pilih "y" untuk pairing jika pertama kali
+echo   - Masukkan IP:PORT pairing dan kode 6-digit
+echo   - Setelah pairing, masukkan IP dan Port koneksi
+echo.
+echo   %ESC%[33m  CATATAN PENTING:%ESC%[0m
 echo   - Port berubah setiap kali WiFi terhubung ulang
-echo   - Pastikan Windows Firewall mengizinkan ADB
+echo   - Kode 6-digit hanya berlaku beberapa detik, jangan sampai habis
+echo   - Pastikan Windows Firewall tidak memblokir ADB
+echo   - HP dan laptop HARUS di jaringan WiFi yang sama
 echo.
 pause
 goto :MAIN_MENU
@@ -650,10 +705,18 @@ echo.
 echo   %ESC%[35m  === AMBIL SCREENSHOT ===%ESC%[0m
 echo.
 call :NOTE "Mengambil screenshot dari HP..."
-set "SS_FILE=screenshot_%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%.png"
+set "SS_FILE=screenshot_%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%.png"
+set "SS_FILE=!SS_FILE: =0!"
 "%ADB_EXE%" exec-out screencap -p > "!SS_FILE!"
 if exist "!SS_FILE!" (
-    call :OK "Screenshot disimpan: !SS_FILE!"
+    for %%F in ("!SS_FILE!") do (
+        if %%~zF gtr 0 (
+            call :OK "Screenshot disimpan: !SS_FILE!"
+        ) else (
+            del "!SS_FILE!"
+            call :ERR "Screenshot gagal - file kosong. Pastikan HP terhubung dan ADB aktif."
+        )
+    )
 ) else (
     call :ERR "Gagal mengambil screenshot. Pastikan HP terhubung."
 )

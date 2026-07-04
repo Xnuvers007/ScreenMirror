@@ -140,7 +140,8 @@ set "TURN_SCREEN_OFF=n"
 
 if exist "%CONFIG_FILE%" (
     for /f "usebackq tokens=1,* delims==" %%a in ("%CONFIG_FILE%") do (
-        if not "%%a"=="" if not "%%a:~0,1%"==";" (
+        set "_line_first=%%a"
+        if not "!_line_first!"=="" if not "!_line_first:~0,1!"==";" if not "!_line_first:~0,1!"=="#" (
             set "%%a=%%b"
         )
     )
@@ -323,13 +324,10 @@ echo   %ESC%[35m  === STARTING SCREEN MIRROR ===%ESC%[0m
 echo.
 set "SCRCPY_ARGS=--video-codec=!LAST_CODEC! -b !LAST_BITRATE! --max-fps !LAST_FPS!"
 if not "!LAST_RESOLUTION!"=="0" set "SCRCPY_ARGS=!SCRCPY_ARGS! --max-size !LAST_RESOLUTION!"
-set "SCRCPY_ARGS=!SCRCPY_ARGS! --video-buffer=50"
 if /i "!STAY_AWAKE!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --stay-awake"
 if /i "!TURN_SCREEN_OFF!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --turn-screen-off"
 if /i "!NO_CONTROL!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --no-control"
 if /i "!RECORD_SCREEN!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --record !RECORD_FILENAME!"
-if "!LAST_CONNECTION!"=="2" set "SCRCPY_ARGS=!SCRCPY_ARGS! --tcpip=!LAST_IP!:!LAST_PORT!"
-if "!LAST_CONNECTION!"=="3" set "SCRCPY_ARGS=!SCRCPY_ARGS! --tcpip=!LAST_IP!:!LAST_PORT!"
 
 call :NOTE "Command: scrcpy !SCRCPY_ARGS!"
 call :PRINT_SEP
@@ -395,9 +393,10 @@ call :NOTE "STEP 4: Connecting via WiFi to !LAST_IP!:!LAST_PORT!..."
 timeout /t 3 /nobreak >nul
 
 "%ADB_EXE%" devices | findstr "!LAST_IP!" >nul
-if %errorLevel% neq 0 (
+if !errorlevel! neq 0 (
     call :ERR "WiFi connection failed!"
     call :WARN "Make sure phone and laptop are on the same WiFi"
+    call :WARN "Make sure TCP/IP mode is active (re-run and connect USB first)"
     call :WARN "Try temporarily disabling Windows Firewall"
     pause
     goto :MAIN_MENU
@@ -423,33 +422,69 @@ echo.
 set /p "DO_PAIR=  First time? (Pairing needed) [y/n] (default: y): "
 if "!DO_PAIR!"=="" set "DO_PAIR=y"
 
-if /i "!DO_PAIR!"=="y" (
-    echo.
-    call :NOTE "On phone: Settings -> Developer Options -> Wireless Debugging"
-    call :NOTE "          -> 'Pair device with pairing code'"
-    call :NOTE "Note the IP:PORT and 6-digit code"
-    echo.
-    set /p "PAIR_ADDR=  Enter pairing IP:PORT (e.g. 192.168.1.5:43521): "
-    set /p "PAIR_CODE=  Enter 6-digit code from phone: "
-    if "!PAIR_ADDR!"=="" ( call :ERR "Pairing address cannot be empty!"; pause; goto :MAIN_MENU )
-    call :NOTE "Pairing with !PAIR_ADDR!..."
-    "%ADB_EXE%" pair "!PAIR_ADDR!" "!PAIR_CODE!"
-    if %errorLevel% neq 0 ( call :ERR "Pairing failed!"; pause; goto :MAIN_MENU )
-    call :OK "Pairing successful!"
-)
+if /i "!DO_PAIR!"=="y" goto :DO_PAIRING_WD
+goto :WD_CONNECT
 
+:DO_PAIRING_WD
 echo.
-call :NOTE "On phone: note the 'IP address & Port' in the Wireless Debugging menu"
+call :NOTE "On phone: Settings -> Developer Options -> Wireless Debugging"
+call :NOTE "          -> 'Pair device with pairing code'"
+call :NOTE "Note the IP:PORT and 6-digit code"
+echo.
+set "PAIR_ADDR="
+set "PAIR_CODE="
+set /p "PAIR_ADDR=  Enter pairing IP:PORT (e.g. 192.168.1.5:43521): "
+set /p "PAIR_CODE=  Enter 6-digit code from phone: "
+if "!PAIR_ADDR!"=="" (
+    call :ERR "Pairing address cannot be empty!"
+    pause
+    goto :MAIN_MENU
+)
+if "!PAIR_CODE!"=="" (
+    call :ERR "Pairing code cannot be empty!"
+    pause
+    goto :MAIN_MENU
+)
+call :NOTE "Pairing with !PAIR_ADDR!..."
+call :NOTE "Starting ADB server (please wait)..."
+"%ADB_EXE%" start-server >nul 2>&1
+timeout /t 2 /nobreak >nul
+"%ADB_EXE%" pair "!PAIR_ADDR!" "!PAIR_CODE!"
+if !errorlevel! neq 0 (
+    call :ERR "Pairing failed! Check the code and address."
+    call :WARN "Try reopening 'Pair device with code' on your phone to get a new code"
+    call :WARN "Ensure IP:PORT is correct (format: 192.168.x.x:PORT_NOT_5555)"
+    pause
+    goto :MAIN_MENU
+)
+call :OK "Pairing successful!"
+
+:WD_CONNECT
+echo.
+call :NOTE "On phone: note the IP address and Port in the Wireless Debugging menu"
+set "LAST_IP="
 set /p "LAST_IP=  Enter phone IP: "
 set /p "LAST_PORT=  Enter Port (from Wireless Debugging): "
-if "!LAST_IP!"=="" ( call :ERR "IP cannot be empty!"; pause; goto :MAIN_MENU )
+if "!LAST_IP!"=="" (
+    call :ERR "IP cannot be empty!"
+    pause
+    goto :MAIN_MENU
+)
+if "!LAST_PORT!"=="" set "LAST_PORT=5555"
 
 call :NOTE "Connecting to !LAST_IP!:!LAST_PORT!..."
 "%ADB_EXE%" connect "!LAST_IP!:!LAST_PORT!"
-timeout /t 2 /nobreak >nul
+timeout /t 3 /nobreak >nul
 
 "%ADB_EXE%" devices | findstr "!LAST_IP!" >nul
-if %errorLevel% neq 0 ( call :ERR "Connection failed!"; call :WARN "Ensure same WiFi network"; pause; goto :MAIN_MENU )
+if !errorlevel! neq 0 (
+    call :ERR "Connection failed!"
+    call :WARN "Make sure phone and laptop are on the same WiFi"
+    call :WARN "Make sure Wireless Debugging is still active on your phone"
+    call :WARN "The Wireless Debugging port changes each time WiFi reconnects"
+    pause
+    goto :MAIN_MENU
+)
 
 call :OK "Wireless Debugging connected!"
 set "LAST_CONNECTION=3"
@@ -510,31 +545,50 @@ call :PRINT_BANNER
 echo.
 echo   %ESC%[35m  === TUTORIAL: WIRELESS DEBUGGING (Android 11+) ===%ESC%[0m
 echo.
-echo   Connect your phone wirelessly via same WiFi network.
+echo   Connect your phone wirelessly via the same WiFi network.
 echo.
 echo   %ESC%[36m  --- STEP 1: Enable Wireless Debugging ----------------%ESC%[0m
-echo   1. Settings ^^> Developer Options
-echo   2. Find "Wireless Debugging"
-echo   3. Enable the toggle ^^> tap "Allow"
+echo   1. Open %ESC%[33mSettings%ESC%[0m on your phone
+echo   2. Go to %ESC%[33mDeveloper Options%ESC%[0m
+echo      (If not visible, tap Build Number 7x in "About Phone")
+echo   3. Find and enable %ESC%[33m"Wireless Debugging"%ESC%[0m
+echo   4. Tap "Allow" on the confirmation popup
 echo.
-echo   %ESC%[36m  --- STEP 2: Note IP and Port --------------------------%ESC%[0m
-echo   Inside Wireless Debugging menu, note:
-echo   IP address and Port (e.g. 192.168.1.5:39465)
+echo   %ESC%[36m  --- STEP 2: Get the 6-Digit Pairing Code -------------%ESC%[0m
+echo   %ESC%[33m  ^> This step is REQUIRED before the first connection%ESC%[0m
 echo.
-echo   %ESC%[36m  --- STEP 3: Pair (First Time Only) --------------------%ESC%[0m
-echo   1. Tap "Pair device with pairing code"
-echo   2. Note IP:PORT and 6-digit code
-echo   3. In Command Prompt: adb pair IP:PAIR_PORT
-echo   4. Enter the 6-digit code
-echo   5. "Successfully paired" [OK]
+echo   1. Inside Wireless Debugging, tap:
+echo      %ESC%[32m"Pair device with pairing code"%ESC%[0m
 echo.
-echo   %ESC%[36m  --- STEP 4: Connect ------------------------------------%ESC%[0m
-echo   adb connect IP:PORT
-echo   Example: adb connect 192.168.1.5:39465
+echo   2. Your phone will show 3 pieces of info:
+echo      %ESC%[36m  * IP Address    : %ESC%[0mexample  192.168.1.5
+echo      %ESC%[36m  * Pairing PORT  : %ESC%[0mexample  43521   ^<-- port for adb pair
+echo      %ESC%[36m  * 6-digit code  : %ESC%[0mexample  986143  ^<-- the secret code
 echo.
-echo   %ESC%[33m  NOTES:%ESC%[0m
+echo   3. In this script, enter:
+echo      Pairing IP:PORT  ^-->  192.168.1.5:43521
+echo      6-digit code     ^-->  986143
+echo.
+echo   %ESC%[33m  NOTE: The PAIRING port is different from the CONNECTION port!%ESC%[0m
+echo   %ESC%[33m  After pairing, go back to the Wireless Debugging main screen%ESC%[0m
+echo   %ESC%[33m  to see the actual IP ^& Port for connecting.%ESC%[0m
+echo.
+echo   %ESC%[36m  --- STEP 3: Note the Connection IP and Port -----------%ESC%[0m
+echo   Go back to the Wireless Debugging main screen and note:
+echo   %ESC%[36m  "IP address ^& Port"%ESC%[0m shown at the top
+echo   Example: 192.168.1.5:39465  ^<-- used for adb connect
+echo.
+echo   %ESC%[36m  --- STEP 4: Connect via Script ------------------------%ESC%[0m
+echo   Choose menu 3 (Wireless Debugging) from the main menu, then:
+echo   - Choose "y" for pairing if it's your first time
+echo   - Enter the pairing IP:PORT and 6-digit code
+echo   - After pairing, enter the connection IP and Port
+echo.
+echo   %ESC%[33m  IMPORTANT NOTES:%ESC%[0m
 echo   - Port changes every time WiFi reconnects
-echo   - Ensure Windows Firewall allows ADB
+echo   - The 6-digit code expires quickly, don't let it time out
+echo   - Make sure Windows Firewall doesn't block ADB
+echo   - Phone and laptop MUST be on the same WiFi network
 echo.
 pause
 goto :MAIN_MENU
@@ -650,10 +704,18 @@ echo.
 echo   %ESC%[35m  === TAKE SCREENSHOT ===%ESC%[0m
 echo.
 call :NOTE "Taking screenshot from phone..."
-set "SS_FILE=screenshot_%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%.png"
+set "SS_FILE=screenshot_%DATE:~10,4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%.png"
+set "SS_FILE=!SS_FILE: =0!"
 "%ADB_EXE%" exec-out screencap -p > "!SS_FILE!"
 if exist "!SS_FILE!" (
-    call :OK "Screenshot saved: !SS_FILE!"
+    for %%F in ("!SS_FILE!") do (
+        if %%~zF gtr 0 (
+            call :OK "Screenshot saved: !SS_FILE!"
+        ) else (
+            del "!SS_FILE!"
+            call :ERR "Screenshot failed - empty file. Make sure phone is connected and ADB is active."
+        )
+    )
 ) else (
     call :ERR "Failed to take screenshot. Make sure phone is connected."
 )

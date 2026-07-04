@@ -288,35 +288,49 @@ tutorial_wireless_debugging() {
   2. Find "Wireless Debugging" or "Wi-Fi Debugging"
   3. Enable the "Wireless Debugging" toggle
   4. A popup will appear — tap "Allow"
-  5. Tap on "Wireless Debugging" to enter its settings
+  5. Tap on the "Wireless Debugging" text to enter its menu
 
-  STEP 2: Note the IP and Port
+  STEP 2: Get the 6-Digit Pairing Code
   ────────────────────────────────────────────────────────
-  Inside the Wireless Debugging menu, you will see:
-  • IP address and Port → example: 192.168.1.5:39465
-    → THIS is used for connecting
+  ⚠  This step is REQUIRED before your first connection!
 
-  STEP 3: Pair the Device (First Time Only)
-  ────────────────────────────────────────────────────────
-  For the first time, you need to "pair":
-  1. In Wireless Debugging menu, tap "Pair device with pairing code"
-  2. You will see: IP:Port for pairing and a 6-digit code
-  3. On your laptop, run:
-     adb pair <IP>:<PAIRING_PORT>
-     Example: adb pair 192.168.1.5:43521
-  4. Enter the 6-digit code shown on your phone
-  5. You will see: "Successfully paired" ✓
+  1. Inside the Wireless Debugging menu, tap:
+     ► "Pair device with pairing code"
 
-  STEP 4: Connect
+  2. Your phone screen will show 3 pieces of info:
+     ┌──────────────────────────────────────────────────┐
+     │  IP Address    : example  192.168.1.5             │
+     │  Pairing PORT  : example  43521   ← for adb pair  │
+     │  6-digit code  : example  986143  ← secret code   │
+     └──────────────────────────────────────────────────┘
+
+  3. In this script, when prompted, enter:
+     • Pairing IP:PORT  →  192.168.1.5:43521
+     • 6-digit code     →  986143
+
+  ⚠  IMPORTANT: The PAIRING port (43521) is DIFFERENT from the CONNECTION port!
+     The pairing port only appears in the "Pair device" screen.
+     The connection port is shown on the main Wireless Debugging screen.
+
+  STEP 3: Note the Connection IP and Port
   ────────────────────────────────────────────────────────
-  After pairing, to connect each time:
-  adb connect <IP>:<PORT>
-  Example: adb connect 192.168.1.5:39465
+  After pairing, go back to the main Wireless Debugging screen.
+  At the top you will see:
+  • "IP address & Port" → example: 192.168.1.5:39465
+    → THIS is used for connecting (NOT the pairing port!)
+
+  STEP 4: Connect via Script
+  ────────────────────────────────────────────────────────
+  Choose menu 3 (Wireless Debugging) from the main menu, then:
+  • Choose "y" for pairing if it's your first time
+  • Enter the pairing IP:PORT and 6-digit code
+  • After pairing succeeds, enter the connection IP and Port
 
   ────────────────────────────────────────────────────────
   ⚠  IMPORTANT NOTES
   ────────────────────────────────────────────────────────
   • The Wireless Debugging port CHANGES each time WiFi reconnects
+  • The 6-digit code expires in seconds — enter it quickly!
   • Make sure your laptop firewall doesn't block ADB connections
   • Performance depends on your WiFi signal quality
   • For Android 10 and below, use the WiFi via USB method instead
@@ -483,12 +497,10 @@ build_scrcpy_args() {
     args+=("-b" "$LAST_BITRATE")
     args+=("--max-fps" "$LAST_FPS")
     [ "$LAST_RESOLUTION" != "0" ] && args+=("--max-size" "$LAST_RESOLUTION")
-    args+=("--video-buffer=50")
     [[ "$STAY_AWAKE" =~ ^[Yy]$ ]] && args+=("--stay-awake")
     [[ "$TURN_SCREEN_OFF" =~ ^[Yy]$ ]] && args+=("--turn-screen-off")
     [[ "$NO_CONTROL" =~ ^[Yy]$ ]] && args+=("--no-control")
     [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]] && args+=("--record" "$RECORD_FILENAME")
-    ([ "$LAST_CONNECTION" = "2" ] || [ "$LAST_CONNECTION" = "3" ]) && args+=("--tcpip=${LAST_IP}:${LAST_PORT}")
     echo "${args[@]}"
 }
 
@@ -549,11 +561,12 @@ connect_wifi() {
 
     step "STEP 4: Connecting via WiFi to $LAST_IP:$LAST_PORT..."
     adb connect "${LAST_IP}:${LAST_PORT}"
-    sleep 2
+    sleep 3
 
     if ! adb devices | grep -q "${LAST_IP}:${LAST_PORT}"; then
         error "WiFi connection failed!"
         warn "Make sure phone and laptop are on the same WiFi network"
+        warn "Make sure TCP/IP mode is still active (re-run and plug USB first if needed)"
         warn "Try temporarily disabling firewall: sudo ufw disable"
         return 1
     fi
@@ -601,11 +614,13 @@ connect_wireless_debug() {
 
     step "Connecting to ${LAST_IP}:${LAST_PORT}..."
     adb connect "${LAST_IP}:${LAST_PORT}"
-    sleep 2
+    sleep 3
 
     if ! adb devices | grep -q "${LAST_IP}:${LAST_PORT}"; then
         error "Connection failed!"
         warn "Make sure phone and laptop are on the same WiFi network"
+        warn "Make sure Wireless Debugging is still active on your phone"
+        warn "The port changes every time WiFi reconnects — check the phone for the new port"
         return 1
     fi
 
@@ -626,7 +641,12 @@ take_screenshot() {
     step "Taking screenshot from phone..."
     local filename="screenshot_$(date +%Y%m%d_%H%M%S).png"
     adb exec-out screencap -p > "$filename"
-    [ -f "$filename" ] && info "Screenshot saved: $filename" || error "Failed to take screenshot. Make sure phone is connected."
+    if [ -f "$filename" ] && [ -s "$filename" ]; then
+        info "Screenshot saved: $filename"
+    else
+        [ -f "$filename" ] && rm -f "$filename"
+        error "Failed to take screenshot. Make sure phone is connected and ADB is active."
+    fi
     press_enter
 }
 

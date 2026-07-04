@@ -294,35 +294,50 @@ tutorial_wireless_debugging() {
   2. Cari "Wireless Debugging" atau "Debug Nirkabel"
   3. Aktifkan toggle "Wireless Debugging"
   4. Akan muncul popup, pilih "Izinkan"
-  5. Ketuk "Wireless Debugging" untuk masuk ke menunya
+  5. Ketuk tulisan "Wireless Debugging" untuk masuk ke menunya
 
-  LANGKAH 2: Catat IP dan Port
+  LANGKAH 2: Dapatkan Kode 6-Digit untuk Pairing
   ────────────────────────────────────────────────────────
-  Di dalam menu Wireless Debugging, Anda akan melihat:
-  • IP address dan Port → contoh: 192.168.1.5:39465
-    → INI YANG DIPAKAI untuk koneksi
+  ⚠  Langkah ini WAJIB dilakukan sebelum koneksi pertama kali!
 
-  LANGKAH 3: Pasangkan Perangkat (Pairing)
-  ────────────────────────────────────────────────────────
-  Untuk pertama kali, perlu "pairing" dulu:
-  1. Di menu Wireless Debugging, ketuk "Pasangkan perangkat dengan kode"
-  2. Akan muncul: IP:Port Pairing dan Kode Pairing 6 digit
-  3. Di laptop, jalankan perintah:
-     adb pair <IP>:<PORT_PAIRING>
-     Contoh: adb pair 192.168.1.5:43521
-  4. Masukkan kode 6 digit yang muncul di HP
-  5. Akan muncul: "Successfully paired" ✓
+  1. Di dalam menu Wireless Debugging, ketuk:
+     ► "Pasangkan perangkat dengan kode penyambungan"
+       (atau "Pair device with pairing code")
 
-  LANGKAH 4: Hubungkan
+  2. Layar HP akan menampilkan 3 informasi penting:
+     ┌─────────────────────────────────────────────┐
+     │  IP Address   : contoh  192.168.1.5          │
+     │  Port PAIRING : contoh  43521   ← untuk pair │
+     │  Kode 6-digit : contoh  986143  ← kode rahasia│
+     └─────────────────────────────────────────────┘
+
+  3. Di script ini, saat diminta, masukkan:
+     • IP:PORT pairing  →  192.168.1.5:43521
+     • Kode 6-digit     →  986143
+
+  ⚠  PENTING: Port PAIRING (43521) BERBEDA dengan port KONEKSI!
+     Port pairing hanya muncul saat menu "Pasangkan perangkat".
+     Port koneksi ada di layar utama Wireless Debugging.
+
+  LANGKAH 3: Catat IP dan Port Koneksi
   ────────────────────────────────────────────────────────
-  Setelah pairing, setiap kali ingin connect:
-  adb connect <IP>:<PORT>
-  Contoh: adb connect 192.168.1.5:39465
+  Setelah pairing selesai, kembali ke layar utama Wireless Debugging.
+  Di bagian atas akan tertera:
+  • "IP address & Port" → contoh: 192.168.1.5:39465
+    → INI yang dipakai untuk adb connect (BUKAN port pairing!)
+
+  LANGKAH 4: Hubungkan via Script
+  ────────────────────────────────────────────────────────
+  Pilih menu 3 (Wireless Debugging) di menu utama, lalu:
+  • Pilih "y" untuk pairing jika pertama kali
+  • Masukkan IP:PORT pairing dan kode 6-digit
+  • Setelah pairing berhasil, masukkan IP dan Port koneksi
 
   ────────────────────────────────────────────────────────
   ⚠  CATATAN PENTING
   ────────────────────────────────────────────────────────
   • Port Wireless Debugging BERUBAH setiap kali WiFi di-reconnect
+  • Kode 6-digit hanya berlaku beberapa detik, jangan sampai habis!
   • Pastikan firewall laptop tidak memblokir koneksi ADB
   • Performa tergantung kualitas sinyal WiFi Anda
   • Untuk Android 10 ke bawah, gunakan metode WiFi via USB (tcpip 5555)
@@ -510,9 +525,6 @@ bangun_perintah_scrcpy() {
         args+=("--max-size" "$LAST_RESOLUTION")
     fi
 
-    # Buffer rendah untuk latency minimal
-    args+=("--video-buffer=50")
-
     # Stay Awake
     if [[ "$STAY_AWAKE" =~ ^[Yy]$ ]]; then
         args+=("--stay-awake")
@@ -531,11 +543,6 @@ bangun_perintah_scrcpy() {
     # Rekam layar
     if [[ "$RECORD_SCREEN" =~ ^[Yy]$ ]]; then
         args+=("--record" "$RECORD_FILENAME")
-    fi
-
-    # Koneksi TCP/IP
-    if [ "$LAST_CONNECTION" = "2" ] || [ "$LAST_CONNECTION" = "3" ]; then
-        args+=("--tcpip=${LAST_IP}:${LAST_PORT}")
     fi
 
     echo "${args[@]}"
@@ -619,12 +626,13 @@ koneksi_wifi() {
 
     step "LANGKAH 4: Menghubungkan via WiFi ke $LAST_IP:$LAST_PORT..."
     adb connect "${LAST_IP}:${LAST_PORT}"
-    sleep 2
+    sleep 3
 
     # Verifikasi koneksi
     if ! adb devices | grep -q "${LAST_IP}:${LAST_PORT}"; then
         error "Koneksi WiFi gagal!"
         warn "Pastikan HP dan laptop terhubung ke WiFi yang sama"
+        warn "Pastikan mode TCP/IP masih aktif (jalankan ulang dan colok USB jika perlu)"
         warn "Coba matikan firewall sementara: sudo ufw disable"
         return 1
     fi
@@ -702,11 +710,13 @@ koneksi_wireless_debug() {
 
     step "Menghubungkan ke ${LAST_IP}:${LAST_PORT}..."
     adb connect "${LAST_IP}:${LAST_PORT}"
-    sleep 2
+    sleep 3
 
     if ! adb devices | grep -q "${LAST_IP}:${LAST_PORT}"; then
         error "Koneksi gagal!"
         warn "Pastikan HP dan laptop di jaringan WiFi yang sama"
+        warn "Pastikan Wireless Debugging masih aktif di HP"
+        warn "Port berubah setiap kali WiFi reconnect — periksa port baru di HP"
         return 1
     fi
 
@@ -736,10 +746,11 @@ ambil_screenshot() {
     step "Mengambil screenshot dari HP..."
     local filename="screenshot_$(date +%Y%m%d_%H%M%S).png"
     adb exec-out screencap -p > "$filename"
-    if [ -f "$filename" ]; then
+    if [ -f "$filename" ] && [ -s "$filename" ]; then
         info "Screenshot disimpan: $filename"
     else
-        error "Gagal mengambil screenshot. Pastikan HP terhubung."
+        [ -f "$filename" ] && rm -f "$filename"
+        error "Gagal mengambil screenshot. Pastikan HP terhubung dan ADB aktif."
     fi
     tekan_enter
 }
