@@ -76,11 +76,11 @@ for /f "usebackq tokens=*" %%v in (`powershell -NoProfile -Command "$ErrorAction
 if not "!LATEST_VER!"=="" if not "!LATEST_VER!"=="!SCRIPT_VERSION!" (
     echo.
     echo   %ESC%[33m=================================================================%ESC%[0m
-    echo   %ESC%[33m  UPDATE TERSEDIA: !LATEST_VER! (Versi saat ini: !SCRIPT_VERSION!)%ESC%[0m
+    echo   %ESC%[33m  UPDATE TERSEDIA: !LATEST_VER! ^(Versi saat ini: !SCRIPT_VERSION!^)%ESC%[0m
     echo   %ESC%[33m  Download manual di: https://github.com/Xnuvers007/ScreenMirror/releases%ESC%[0m
     echo   %ESC%[33m=================================================================%ESC%[0m
     echo.
-    set /p "DO_UPDATE=  Update sekarang? (Otomatis download ^& install) [y/n] (default: n): "
+    set /p "DO_UPDATE=  Update sekarang? (Otomatis download & install) [y/n] (default: n): "
     if /i "!DO_UPDATE!"=="y" (
         call :NOTE "Mendownload update (!LATEST_VER!)..."
         powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://github.com/Xnuvers007/ScreenMirror/archive/refs/tags/!LATEST_VER!.zip' -OutFile 'update.zip'"
@@ -382,14 +382,14 @@ for /f "skip=1 tokens=1,2" %%a in ('"%ADB_EXE%" devices 2^>nul') do (
         for /f "tokens=*" %%p in ('"%ADB_EXE%" -s %%a shell getprop ro.board.platform 2^>nul') do set "DEVICE_PLATFORM=%%p"
         for /f "tokens=*" %%c in ('"%ADB_EXE%" -s %%a shell getprop ro.product.cpu.abi 2^>nul') do set "DEVICE_ABI=%%c"
 
-        call :PRINT_SEP
+        echo   %ESC%[34m  ------------------------------------------------------%ESC%[0m
         call :NOTE "Brand   : !DEVICE_BRAND!"
         call :NOTE "Model   : !DEVICE_MODEL!"
         call :NOTE "Android : !DEVICE_VER! (API !DEVICE_SDK!)"
         call :NOTE "Platform: !DEVICE_PLATFORM!"
         call :NOTE "CPU ABI : !DEVICE_ABI!"
         call :NOTE "DeviceID: %%a"
-        call :PRINT_SEP
+        echo   %ESC%[34m  ------------------------------------------------------%ESC%[0m
 
         if defined DEVICE_SDK (
             if !DEVICE_SDK! LSS 21 (
@@ -593,10 +593,10 @@ if "!AUDIO_MODE!"=="4" set "SCRCPY_ARGS=!SCRCPY_ARGS! --audio-source=mic"
 if /i "!ADVANCED_KEYBOARD!"=="y" set "SCRCPY_ARGS=!SCRCPY_ARGS! --keyboard=uhid"
 
 call :NOTE "Perintah: scrcpy !SCRCPY_ARGS!"
-call :PRINT_SEP
+echo   %ESC%[34m  ------------------------------------------------------%ESC%[0m
 call :OK "Jendela mirror akan segera muncul..."
 call :NOTE "Pintasan: Ctrl+H=Home - Ctrl+B=Back - Ctrl+M=Menu - Ctrl+S=Screenshot"
-call :PRINT_SEP
+echo   %ESC%[34m  ------------------------------------------------------%ESC%[0m
 echo.
 
 if defined SCRCPY_PATH (
@@ -1104,7 +1104,7 @@ if exist "%CONFIG_FILE%" (
     call :NOTE "FPS: !WD_FPS! ^| Bitrate: !WD_BITRATE! ^| Resolusi: !WD_RESOLUTION! ^| Codec: !WD_CODEC!"
     call :NOTE "Stay Awake: !WD_STAY_AWAKE! ^| No Control: !WD_NO_CONTROL! ^| Layar Mati: !WD_TURN_SCREEN_OFF!"
     echo.
-    call :PRINT_SEP
+    echo   %ESC%[34m  ------------------------------------------------------%ESC%[0m
     set /p "del_conf=  Hapus semua konfigurasi? [y/n]: "
     if /i "!del_conf!"=="y" (
         del "%CONFIG_FILE%"
@@ -1147,7 +1147,7 @@ echo   %ESC%[37m  9.%ESC%[0m Lihat/Hapus Konfigurasi Tersimpan
 echo   %ESC%[37m  c.%ESC%[0m Cek Update ScreenMirror
 echo   %ESC%[37m  0.%ESC%[0m Keluar
 echo.
-call :PRINT_SEP
+echo   %ESC%[34m  ------------------------------------------------------%ESC%[0m
 
 set /p "choice=  Masukkan pilihan [0-9]: "
 

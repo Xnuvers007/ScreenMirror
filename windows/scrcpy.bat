@@ -76,7 +76,7 @@ for /f "usebackq tokens=*" %%v in (`powershell -NoProfile -Command "$ErrorAction
 if not "!LATEST_VER!"=="" if not "!LATEST_VER!"=="!SCRIPT_VERSION!" (
     echo.
     echo   %ESC%[33m=================================================================%ESC%[0m
-    echo   %ESC%[33m  UPDATE AVAILABLE: !LATEST_VER! (Current version: !SCRIPT_VERSION!)%ESC%[0m
+    echo   %ESC%[33m  UPDATE AVAILABLE: !LATEST_VER! ^(Current version: !SCRIPT_VERSION!^)%ESC%[0m
     echo   %ESC%[33m  Manual download at: https://github.com/Xnuvers007/ScreenMirror/releases%ESC%[0m
     echo   %ESC%[33m=================================================================%ESC%[0m
     echo.
