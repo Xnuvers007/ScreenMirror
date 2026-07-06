@@ -468,7 +468,7 @@ echo   %ESC%[36m  Pilih Resolusi:%ESC%[0m
 echo     1. 720p  - Ringan
 echo     2. 1080p - DIREKOMENDASIKAN
 echo     3. 1440p - Kualitas tinggi
-echo     4. Penuh (resolusi asli HP)
+echo     4. Penuh ^(resolusi asli HP^)
 echo.
 set /p "res_choice=  Resolusi [1-4] (default: 2): "
 if "!res_choice!"=="" set "res_choice=2"
@@ -480,9 +480,9 @@ call :OK "Resolusi: !LAST_RESOLUTION!"
 
 echo.
 echo   %ESC%[36m  Pilih Video Codec:%ESC%[0m
-echo     1. H.264  - Kompatibilitas luas (DEFAULT)
-echo     2. H.265  - Lebih efisien (Android 10+)
-echo     3. AV1    - Eksperimental (Android 14+)
+echo     1. H.264  - Kompatibilitas luas ^(DEFAULT^)
+echo     2. H.265  - Lebih efisien ^(Android 10+^)
+echo     3. AV1    - Eksperimental ^(Android 14+^)
 echo.
 set /p "codec_choice=  Codec [1-3] (default: 1): "
 if "!codec_choice!"=="" set "codec_choice=1"
@@ -525,9 +525,9 @@ if /i not "!ENABLE_OTG!"=="y" (
     if "!WINDOW_OPTIONS!"=="" set "WINDOW_OPTIONS=1"
 
     call :NOTE "Pengaturan Audio (Android 11+):"
-    echo     1. Suara hanya di Laptop (Default)
-    echo     2. Suara di HP dan Laptop (Audio Duplication)
-    echo     3. Suara hanya di HP (Matikan forwarding)
+    echo     1. Suara hanya di Laptop ^(Default^)
+    echo     2. Suara di HP dan Laptop ^(Audio Duplication^)
+    echo     3. Suara hanya di HP ^(Matikan forwarding^)
     echo     4. Teruskan Mikrofon HP ke Laptop
     set /p "AUDIO_MODE=  Pilih mode audio [1-4] (default: 1): "
     if "!AUDIO_MODE!"=="" set "AUDIO_MODE=1"

@@ -474,7 +474,7 @@ echo   %ESC%[36m  Choose Resolution:%ESC%[0m
 echo     1. 720p  - Lightweight
 echo     2. 1080p - RECOMMENDED
 echo     3. 1440p - High quality
-echo     4. Full (native phone resolution)
+echo     4. Full ^(native phone resolution^)
 echo.
 set /p "res_choice=  Resolution [1-4] (default: 2): "
 if "!res_choice!"=="" set "res_choice=2"
@@ -486,9 +486,9 @@ call :OK "Resolution: !LAST_RESOLUTION!"
 
 echo.
 echo   %ESC%[36m  Choose Video Codec:%ESC%[0m
-echo     1. H.264  - Widely compatible (DEFAULT)
-echo     2. H.265  - More efficient (Android 10+)
-echo     3. AV1    - Experimental (Android 14+)
+echo     1. H.264  - Widely compatible ^(DEFAULT^)
+echo     2. H.265  - More efficient ^(Android 10+^)
+echo     3. AV1    - Experimental ^(Android 14+^)
 echo.
 set /p "codec_choice=  Codec [1-3] (default: 1): "
 if "!codec_choice!"=="" set "codec_choice=1"
@@ -531,9 +531,9 @@ if /i not "!ENABLE_OTG!"=="y" (
     if "!WINDOW_OPTIONS!"=="" set "WINDOW_OPTIONS=1"
 
     call :NOTE "Audio Settings (Android 11+):"
-    echo     1. Audio on Laptop only (Default)
-    echo     2. Audio on Phone and Laptop (Audio Duplication)
-    echo     3. Audio on Phone only (Disable forwarding)
+    echo     1. Audio on Laptop only ^(Default^)
+    echo     2. Audio on Phone and Laptop ^(Audio Duplication^)
+    echo     3. Audio on Phone only ^(Disable forwarding^)
     echo     4. Forward Phone Microphone to Laptop
     set /p "AUDIO_MODE=  Select audio mode [1-4] (default: 1): "
     if "!AUDIO_MODE!"=="" set "AUDIO_MODE=1"
