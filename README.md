@@ -1,3 +1,5 @@
+# UPDATE THE SOFTWARE [https://github.com/Xnuvers007/screenmirror-python/releases/tag/v6.1.0](https://github.com/Xnuvers007/screenmirror-python/releases/tag/v6.1.0)
+
 # 📱 ScreenMirror — Display & Control Your Android Screen on Your Laptop
 
 <div align="center">
